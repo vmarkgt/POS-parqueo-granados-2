@@ -3,78 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA TORRE GRANADOS</title>
+    <title>Sistema de Parqueo - Torre Granados</title>
+    <!-- Enlace obligatorio para que el navegador lo reconozca como App PWA -->
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
+    <!-- Librería para la generación de reportes visuales -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
-    <div id="loginCard" class="login-wrapper">
-        <div class="card-center">
-            <img class="logo-large" src="logotorre.png" alt="Logo">
-            <h2 style="margin-bottom:20px; color:#ffffff;">Acceso al Sistema</h2>
-            <div class="input-field">
-                <label>Usuario</label>
-                <input type="text" id="loginUser" placeholder="Usuario">
-            </div>
-            <div class="input-field">
-                <label>Contraseña</label>
-                <input type="password" id="loginPass" placeholder="••••••••" onkeypress="if(event.key === 'Enter') login()">
-            </div>
-            <div style="text-align: left; margin: 10px 0 20px 5px; display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="rememberMe" style="width: 18px; height: 18px;"> 
-                <label for="rememberMe" style="font-size: 13px; color: #8e8e93; font-weight: 600;">Recordar usuario</label>
-            </div>
-            <button class="ios-btn btn-large" onclick="login()">ENTRAR</button>
+    <!-- CARD DE LOGIN -->
+    <div id="loginCard" class="card">
+        <center><img src="logotorre.png" width="150" alt="Logo"></center>
+        <h2>Control de Parqueo</h2>
+        <input type="text" id="loginUser" placeholder="Usuario">
+        <input type="password" id="loginPass" placeholder="Contraseña">
+        <div class="remember-box">
+            <input type="checkbox" id="rememberMe"> <label for="rememberMe">Recordar usuario</label>
         </div>
+        <button class="ios-btn" onclick="login()">Ingresar al Sistema</button>
     </div>
 
-    <div id="appCard" class="app-container" style="display:none;">
-        <div class="reloj-viva">
-            <div id="reloj">00:00:00</div>
-            <div id="fecha">-- de -- de ----</div>
-        </div>
-
-        <div class="header-logo-container">
-            <img class="logo-app-main" src="logotorre.png" alt="Logo">
-        </div>
-
-        <div class="card center-content">
-            <div class="title-ios-sub">INGRESAR VEHÍCULO</div>
-            <input type="text" id="plateInput" class="input-plate" placeholder="PLACA" style="text-transform: uppercase;" onkeypress="if(event.key === 'Enter') registrarEntrada()">
-            <button class="ios-btn btn-large" style="margin-top: 20px;" onclick="registrarEntrada()">REGISTRAR ENTRADA</button>
-        </div>
-
-        <div class="card">
-            <h2 class="title-ios-green">VEHÍCULOS EN PARQUEO</h2>
-            <div id="activeList"></div>
-        </div>
-
-        <div class="card center-content">
-            <div class="button-row" style="margin-bottom: 12px;">
-                <button class="ios-btn-alt btn-med" onclick="cobrarBaño()" style="background:#001441;">Baño (Q3)</button>
-                <button class="ios-btn-alt btn-med" onclick="cobrarTicketPerdido()" style="background:#0138a7; color:#ffffff;">T. Perdido</button>
-                <button class="ios-btn-alt btn-med" onclick="abrirModalMensual()" style="background:#0265f0;">Mensual</button>
+    <!-- CARD PRINCIPAL DE LA APLICACIÓN -->
+    <div id="appCard" class="card" style="display:none;">
+        <div class="header-app">
+            <span id="userDisplay">👤 Usuario: </span>
+            <div id="reloj-box">
+                <div id="reloj">00:00:00</div>
+                <div id="fecha">Fecha Cargando...</div>
             </div>
-            <div class="button-row">
-                <button class="ios-btn-alt" style="background:#7f7f82;" onclick="toggleHistorial()">Ver Historial</button>
-                <button class="ios-btn-report" onclick="generarReporteHTML()">Reporte Final</button>
+        </div>
+
+        <hr style="border: 0.5px solid #e5e5ea; margin: 15px 0;">
+
+        <!-- REGISTRO DE ENTRADAS -->
+        <div class="section">
+            <h3>Ingreso de Vehículo</h3>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="plateInput" placeholder="INGRESE PLACA (Ej: P123ABC o M123ABC)" style="text-transform: uppercase;">
+                <button class="ios-btn-success" onclick="registrarEntrada()">INGRESAR</button>
             </div>
+        </div>
+
+        <!-- LISTA DE VEHÍCULOS ACTIVOS -->
+        <div class="section">
+            <h3>Vehículos en el Parqueo</h3>
+            <div id="activeList" class="lista-vehiculos">
+                <!-- Se llena dinámicamente mediante JS -->
+            </div>
+        </div>
+
+        <!-- MÓDULO DE SERVICIOS EXTRAS -->
+        <div class="section">
+            <h3>Otros Servicios y Cobros</h3>
+            <div class="grid-servicios">
+                <button class="btn-servicio perdido" onclick="cobrarTicketPerdido()">🎫 Ticket Perdido (Q25)</button>
+                <button class="btn-servicio baño" onclick="cobrarBaño()">🧻 Uso de Baño (Q3)</button>
+                <button class="btn-servicio mensual" onclick="abrirModalMensual()">📅 Cobrar Mensualidad</button>
+            </div>
+        </div>
+
+        <!-- ACCIONES DE CIERRE Y ADMINISTRACIÓN -->
+        <div style="margin-top: 30px; display:flex; flex-direction:column; gap:10px;">
+            <button class="ios-btn" style="background:#5856d6;" onclick="toggleHistorial()">📋 Ver Movimientos del Turno</button>
             <div id="historialBox" class="historial-container" style="display:none;"></div>
-        </div>
-
-        <div id="userFooter" class="footer-user-fixed">
-            <div id="userDisplay">👤 OPERADOR: ---</div>
+            <button class="ios-btn" style="background:#007aff;" onclick="generarReporteHTML()">🖨️ Generar Reporte General (Cierre)</button>
         </div>
     </div>
 
-    <div id="modalMensual" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center;">
-        <div class="card" style="width:85%; max-width:350px;">
-            <h3 style="margin-top:0; color:#ffffff;">Cliente Mensual</h3> 
-            <div class="input-field"><label>Nombre del Cliente</label><input type="text" id="mNombre"></div>
-            <div class="input-field"><label>Monto a Pagar Q</label><input type="number" id="mCosto"></div>
-            <button class="ios-btn" style="padding:15px; margin-bottom:10px;" onclick="guardarMensualidad()">Guardar Pago</button>
-            <button class="ios-btn-danger" onclick="cerrarModalMensual()">Cancelar</button>
+    <!-- MODAL EMERGENTE PARA PAGOS MENSUALES -->
+    <div id="modalMensual" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h3>Registrar Pago Mensual</h3>
+            <input type="text" id="mNombre" placeholder="Nombre del Cliente / Empresa">
+            <input type="number" id="mCosto" placeholder="Monto Recibido (Q)">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="ios-btn" style="background:#8e8e93;" onclick="cerrarModalMensual()">Cancelar</button>
+                <button class="ios-btn-success" onclick="guardarMensualidad()">Guardar Pago</button>
+            </div>
         </div>
     </div>
 

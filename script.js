@@ -178,7 +178,7 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- IMPRESIÓN ASÍNCRONA PROTEGIDA CON BLINDAJE CONTRA ERRORES ---
+// --- IMPRESIÓN ASÍNCRONA CON DIAGNÓSTICO DE ERRORES EN PANTALLA ---
 
 function imprimirTicketEntrada(v){
     const fechaHora = new Date();
@@ -201,18 +201,18 @@ function imprimirTicketEntrada(v){
     
     document.body.appendChild(contenedor);
     
-    // Retardo mínimo para esperar que la interfaz del puente WebView esté lista
     setTimeout(() => {
         try {
-            if (window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
+            if (window.AndroidPrinter) {
                 window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
             } else {
-                console.log("Esperando interfaz nativa de impresión...");
+                // Si entra aquí, el JS está bien pero el Kotlin de la app no está inyectando el puente
+                alert("DIAGNÓSTICO: 'window.AndroidPrinter' no existe en el sistema. Revisa tu código Kotlin.");
             }
         } catch (error) {
-            console.error("Fallo temporal de sincronización en el puente nativo: ", error);
+            // Si entra aquí, el puente existe pero la función interna falló en Android Studio
+            alert("DIAGNÓSTICO ERROR KOTLIN: " + error.message);
         } finally {
-            // Se asegura de limpiar el elemento impreso sin interrumpir el flujo del parqueo
             setTimeout(() => contenedor.remove(), 800);
         }
     }, 150);
@@ -241,22 +241,20 @@ function imprimirTicketSalida(h){
     
     document.body.appendChild(contenedor);
     
-    // Retardo mínimo para esperar que la interfaz del puente WebView esté lista
     setTimeout(() => {
         try {
-            if (window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
+            if (window.AndroidPrinter) {
                 window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
             } else {
-                console.log("Esperando interfaz nativa de impresión...");
+                alert("DIAGNÓSTICO: 'window.AndroidPrinter' no existe en el sistema. Revisa tu código Kotlin.");
             }
         } catch (error) {
-            console.error("Fallo temporal de sincronización en el puente nativo: ", error);
+            alert("DIAGNÓSTICO ERROR KOTLIN: " + error.message);
         } finally {
             setTimeout(() => contenedor.remove(), 800);
         }
     }, 150);
 }
-
 // GENERACIÓN DE REPORTE FINAL VISUAL (IMAGEN)
 function generarReporteHTML() {
     let trabajador = prompt("Nombre del trabajador:");

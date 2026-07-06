@@ -53,17 +53,36 @@ body, html { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystem
 }
 
 @media print {
+    /* Configuración explícita del ancho del rollo del POS térmico */
+    @page {
+        size: 58mm auto;
+        margin: 0;
+    }
+    
     body, html {
         background: none !important;
         background-color: #ffffff !important;
+        width: 58mm;
+        margin: 0;
+        padding: 0;
     }
+    
     body > *:not(.ticket-print) { 
         display: none !important; 
     }
+    
     .ticket-print { 
         display: block !important; 
-        font-family: monospace;
+        font-family: 'Arial', sans-serif;
         color: #000000;
         width: 100%;
+        padding: 4mm 2mm;
+        box-sizing: border-box;
+        text-align: center;
     }
+
+    /* selectores de apoyo para mantener limpia la estructura en rollo térmico */
+    .ticket-print h1 { font-size: 32px; margin: 10px 0; font-weight: 900; }
+    .ticket-print p { margin: 4px 0; font-size: 12px; }
+    .ticket-print hr { border: 0; border-top: 1px dashed #000; margin: 8px 0; }
 }

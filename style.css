@@ -46,3 +46,24 @@ body, html { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystem
 
 /* MODAL */
 .modal-simple { display: none; }
+
+/* --- AGREGADO: SOPORTE DE IMPRESIÓN LIMPIA PARA EL CONTAINER DEL TICKET --- */
+.ticket-print { 
+    display: none; 
+}
+
+@media print {
+    body, html {
+        background: none !important;
+        background-color: #ffffff !important;
+    }
+    body > *:not(.ticket-print) { 
+        display: none !important; 
+    }
+    .ticket-print { 
+        display: block !important; 
+        font-family: monospace;
+        color: #000000;
+        width: 100%;
+    }
+}

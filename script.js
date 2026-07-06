@@ -177,7 +177,7 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- IMPRESIÓN DIRECTA MEDIANTE ANDROID PRINT SERVICE (NATIVO WEBVIEW) ---
+// --- PROCESO NATIVO DE IMPRESIÓN EXCLUSIVO PARA ANDROID PRINT SERVICE ---
 
 function imprimirTicketEntrada(v){
     const fechaHora = new Date();
@@ -200,18 +200,14 @@ function imprimirTicketEntrada(v){
     
     document.body.appendChild(contenedor);
     
-    if(window.AndroidPrinter){
-        window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
-    } else {
-        window.print();
-    }
+    // Llamada directa y exclusiva al puente del WebView de Android
+    window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
     
     setTimeout(() => contenedor.remove(), 1000);
 }
 
 function imprimirTicketSalida(h){
     let visualPrecio = h.precio > 0 ? `Q${h.precio}.00` : `Q0.00`;
-    const fechaHora = new Date();
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
     
@@ -233,11 +229,8 @@ function imprimirTicketSalida(h){
     
     document.body.appendChild(contenedor);
     
-    if(window.AndroidPrinter){
-        window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
-    } else {
-        window.print();
-    }
+    // Llamada directa y exclusiva al puente del WebView de Android
+    window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
     
     setTimeout(() => contenedor.remove(), 1000);
 }

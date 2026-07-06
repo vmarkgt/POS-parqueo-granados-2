@@ -71,6 +71,7 @@ function cobrarTicketPerdido() {
     alert("Cobro registrado (Q25)");
 }
 
+// USO DE BAÑO
 function cobrarBaño() {
     historial.push({placa: "USO DE BAÑO", tipo: "BAÑO", precio: 3, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
@@ -177,7 +178,7 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- PROCESO NATIVO DE IMPRESIÓN EXCLUSIVO PARA ANDROID PRINT SERVICE ---
+// --- IMPRESIÓN ASÍNCRONA PROTEGIDA CON BLINDAJE CONTRA ERRORES ---
 
 function imprimirTicketEntrada(v){
     const fechaHora = new Date();
@@ -200,10 +201,21 @@ function imprimirTicketEntrada(v){
     
     document.body.appendChild(contenedor);
     
-    // Llamada directa y exclusiva al puente del WebView de Android
-    window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
-    
-    setTimeout(() => contenedor.remove(), 1000);
+    // Retardo mínimo para esperar que la interfaz del puente WebView esté lista
+    setTimeout(() => {
+        try {
+            if (window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
+                window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
+            } else {
+                console.log("Esperando interfaz nativa de impresión...");
+            }
+        } catch (error) {
+            console.error("Fallo temporal de sincronización en el puente nativo: ", error);
+        } finally {
+            // Se asegura de limpiar el elemento impreso sin interrumpir el flujo del parqueo
+            setTimeout(() => contenedor.remove(), 800);
+        }
+    }, 150);
 }
 
 function imprimirTicketSalida(h){
@@ -229,10 +241,20 @@ function imprimirTicketSalida(h){
     
     document.body.appendChild(contenedor);
     
-    // Llamada directa y exclusiva al puente del WebView de Android
-    window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
-    
-    setTimeout(() => contenedor.remove(), 1000);
+    // Retardo mínimo para esperar que la interfaz del puente WebView esté lista
+    setTimeout(() => {
+        try {
+            if (window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
+                window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
+            } else {
+                console.log("Esperando interfaz nativa de impresión...");
+            }
+        } catch (error) {
+            console.error("Fallo temporal de sincronización en el puente nativo: ", error);
+        } finally {
+            setTimeout(() => contenedor.remove(), 800);
+        }
+    }, 150);
 }
 
 // GENERACIÓN DE REPORTE FINAL VISUAL (IMAGEN)

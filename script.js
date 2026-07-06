@@ -54,10 +54,14 @@ function registrarEntrada(){
     let input = document.getElementById("plateInput");
     let placa = input.value.trim().toUpperCase();
     if(!placa) return;
-    let v = {placa, horaEntrada: new Date(), user: usuarioActivo.user, sellos: 0};
+    
+    let v = {placa: placa, horaEntrada: new Date(), user: usuarioActivo.user, sellos: 0};
     activos.push(v);
     localStorage.setItem("activos", JSON.stringify(activos));
+    
+    // Llamada directa sin esperas
     imprimirTicketEntrada(v);
+    
     input.value = "";
     actualizarLista();
 }
@@ -177,10 +181,9 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- IMPRESIÓN ASÍNCRONA CON DIAGNÓSTICO DE ERRORES EN PANTALLA ---
+// --- IMPRESIÓN DIRECTA NATIVA (CONEXIÓN DIRECTA) ---
 
 function imprimirTicketEntrada(v){
-    const fechaHora = new Date();
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
     
@@ -190,8 +193,8 @@ function imprimirTicketEntrada(v){
             <p style="margin: 3px 0;">--------------------------------</p>
             <p style="margin: 10px 0; font-size: 26px; font-weight: bold;">PLACA: ${v.placa}</p>
             <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 5px 0; text-align: left;">ENTRADA: ${fechaHora.toLocaleTimeString()}</p>
-            <p style="margin: 5px 0; text-align: left;">FECHA:   ${fechaHora.toLocaleDateString()}</p>
+            <p style="margin: 5px 0; text-align: left;">ENTRADA: ${new Date().toLocaleTimeString()}</p>
+            <p style="margin: 5px 0; text-align: left;">FECHA:   ${new Date().toLocaleDateString()}</p>
             <p style="margin: 3px 0;">--------------------------------</p>
             <p style="margin: 10px 0 0 0; font-weight: bold;">30 MIN GRATIS POR SELLO</p>
             <br><br><br><br>
@@ -200,19 +203,10 @@ function imprimirTicketEntrada(v){
     
     document.body.appendChild(contenedor);
     
-    setTimeout(() => {
-        try {
-            if (window.AndroidPrinter) {
-                window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
-            } else {
-                alert("DIAGNÓSTICO: 'window.AndroidPrinter' no se encuentra registrado. Revisa el addJavascriptInterface en tu Kotlin.");
-            }
-        } catch (error) {
-            alert("DIAGNÓSTICO ERROR EN KOTLIN: " + error.message);
-        } finally {
-            setTimeout(() => contenedor.remove(), 800);
-        }
-    }, 150);
+    // Ejecución forzada al puente nativo de Android
+    window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
+    
+    contenedor.remove();
 }
 
 function imprimirTicketSalida(h){
@@ -238,19 +232,10 @@ function imprimirTicketSalida(h){
     
     document.body.appendChild(contenedor);
     
-    setTimeout(() => {
-        try {
-            if (window.AndroidPrinter) {
-                window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
-            } else {
-                alert("DIAGNÓSTICO: 'window.AndroidPrinter' no se encuentra registrado. Revisa el addJavascriptInterface en tu Kotlin.");
-            }
-        } catch (error) {
-            alert("DIAGNÓSTICO ERROR EN KOTLIN: " + error.message);
-        } finally {
-            setTimeout(() => contenedor.remove(), 800);
-        }
-    }, 150);
+    // Ejecución forzada al puente nativo de Android
+    window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
+    
+    contenedor.remove();
 }
 
 // GENERACIÓN DE REPORTE FINAL VISUAL (IMAGEN)

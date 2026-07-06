@@ -1,0 +1,17 @@
+{
+  "short_name": "TorreGranados",
+  "name": "Sistema de Parqueo Torre Granados",
+  "icons": [
+    {
+      "src": "logotorre.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#1c3f60",
+  "theme_color": "#1c3f60",
+  "display": "standalone",
+  "orientation": "portrait"
+}

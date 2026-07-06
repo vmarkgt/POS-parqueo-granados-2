@@ -71,7 +71,6 @@ function cobrarTicketPerdido() {
     alert("Cobro registrado (Q25)");
 }
 
-// COBRAR BAÑO
 function cobrarBaño() {
     historial.push({placa: "USO DE BAÑO", tipo: "BAÑO", precio: 3, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
@@ -177,7 +176,7 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- IMPRESIÓN DIRECTA SEGURA MEDIANTE INTENTS ---
+// --- IMPRESIÓN DIRECTA POR PAQUETE (OPTIMIZADO PWA / PANTALLA DE INICIO) ---
 
 function imprimirTicketEntrada(v){
     let texto = "";
@@ -193,14 +192,9 @@ function imprimirTicketEntrada(v){
     texto += "    30 MIN GRATIS POR SELLO     \n";
     texto += "\n\n\n\n";
 
-    let textoCodificado = encodeURIComponent(texto);
-    let intentURL = "intent://share/#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=" + textoCodificado + ";end";
-
-    let iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = intentURL;
-    document.body.appendChild(iframe);
-    setTimeout(() => document.body.removeChild(iframe), 500);
+    // Enlace con paquete explícito para RawBT / Drivers POS Android internos
+    let intentURL = "intent://base64," + btoa(unescape(encodeURIComponent(texto))) + "#Intent;scheme=rawbt;package=by.isirun.rawbtprinter;end";
+    window.location.href = intentURL;
 }
 
 function imprimirTicketSalida(h){
@@ -221,14 +215,9 @@ function imprimirTicketSalida(h){
     texto += "   ¡GRACIAS POR SU VISITA!    \n";
     texto += "\n\n\n\n";
 
-    let textoCodificado = encodeURIComponent(texto);
-    let intentURL = "intent://share/#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=" + textoCodificado + ";end";
-
-    let iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = intentURL;
-    document.body.appendChild(iframe);
-    setTimeout(() => document.body.removeChild(iframe), 500);
+    // Enlace con paquete explícito para RawBT / Drivers POS Android internos
+    let intentURL = "intent://base64," + btoa(unescape(encodeURIComponent(texto))) + "#Intent;scheme=rawbt;package=by.isirun.rawbtprinter;end";
+    window.location.href = intentURL;
 }
 
 // GENERACIÓN DE REPORTE FINAL

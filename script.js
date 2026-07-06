@@ -62,31 +62,59 @@ function registrarEntrada(){
     actualizarLista();
 }
 
-// COBROS EXTRAS
+// COBROS EXTRAS - TICKET PERDIDO
 function cobrarTicketPerdido() {
     let placa = prompt("Ingrese la PLACA del vehículo:");
     if(!placa) return;
-    historial.push({placa: "T. PERDIDO: " + placa.toUpperCase(), tipo: "TICKET PERDIDO", precio: 25, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
+    let registro = {
+        placa: "T. PERDIDO: " + placa.toUpperCase(), 
+        tipo: "TICKET PERDIDO", 
+        precio: 25, 
+        fecha: new Date().toLocaleDateString(), 
+        operador: usuarioActivo.user, 
+        valorSello: 0
+    };
+    historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
+    imprimirTicketServicioExtra(registro, "Q25.00");
     alert("Cobro registrado (Q25)");
 }
 
-// USO DE BAÑO
+// COBROS EXTRAS - USO DE BAÑO
 function cobrarBaño() {
-    historial.push({placa: "USO DE BAÑO", tipo: "BAÑO", precio: 3, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
+    let registro = {
+        placa: "USO DE BAÑO", 
+        tipo: "BAÑO", 
+        precio: 3, 
+        fecha: new Date().toLocaleDateString(), 
+        operador: usuarioActivo.user, 
+        valorSello: 0
+    };
+    historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
+    imprimirTicketServicioExtra(registro, "Q3.00");
     alert("Uso de baño registrado (Q3)");
 }
 
 function abrirModalMensual() { document.getElementById("modalMensual").style.display = "flex"; }
 function cerrarModalMensual() { document.getElementById("modalMensual").style.display = "none"; }
 
+// COBROS EXTRAS - MENSUALIDAD
 function guardarMensualidad() {
     const nombre = document.getElementById("mNombre").value;
     const costo = parseFloat(document.getElementById("mCosto").value);
     if(!nombre || !costo) return alert("Faltan datos");
-    historial.push({placa: `MENSUAL: ${nombre.toUpperCase()}`, tipo: "MENSUAL", precio: costo, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
+    let registro = {
+        placa: `MENSUAL: ${nombre.toUpperCase()}`, 
+        tipo: "MENSUAL", 
+        precio: costo, 
+        fecha: new Date().toLocaleDateString(), 
+        operador: usuarioActivo.user, 
+        valorSello: 0
+    };
+    historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
+    imprimirTicketServicioExtra(registro, `Q${costo}.00`);
     cerrarModalMensual();
     alert("Pago mensual guardado");
 }
@@ -186,14 +214,14 @@ function imprimirTicketEntrada(v){
     
     contenedor.innerHTML = `
         <img src="logotorre.png" width="90" style="display: block; margin: 0 auto 5px auto;">
-        <p style="font-size: 14px; font-weight: bold;">TORRE GRANADOS</p>
+        <p style="font-size: 14px; font-weight: bold; text-align: center;">TORRE GRANADOS</p>
         <hr>
-        <h1>${v.placa}</h1>
+        <h1 style="text-align: center;">${v.placa}</h1>
         <hr>
         <p><b>ENTRADA:</b> ${fechaHora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
         <p><b>FECHA:</b> ${fechaHora.toLocaleDateString()}</p>
         <hr>
-        <p style="font-weight: bold; font-size: 11px;">30 MIN GRATIS POR SELLO</p>
+        <p style="font-weight: bold; font-size: 11px; text-align: center;">30 MIN GRATIS POR SELLO</p>
     `;
     
     document.body.appendChild(contenedor);
@@ -213,19 +241,47 @@ function imprimirTicketSalida(h){
     contenedor.innerHTML = `
         <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
         <hr>
-        <p style="font-size: 15px; font-weight: bold;">PLACA: ${h.placa}</p>
-        <h1 style="font-size: 36px; margin: 5px 0;">${visualPrecio}</h1>
+        <p style="font-size: 15px; font-weight: bold; text-align: center;">PLACA: ${h.placa}</p>
+        <h1 style="font-size: 36px; margin: 5px 0; text-align: center;">${visualPrecio}</h1>
         <hr>
         <p><b>E:</b> ${h.horaE} | <b>S:</b> ${h.horaS}</p>
         <p><b>FECHA:</b> ${h.fecha}</p>
         <hr>
-        <p style="font-weight: bold; font-size: 11px;">¡GRACIAS POR SU VISITA!</p>
+        <p style="font-weight: bold; font-size: 11px; text-align: center;">¡GRACIAS POR SU VISITA!</p>
     `;
     
     document.body.appendChild(contenedor);
     
     if(window.AndroidPrinter){
         window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
+    }
+    
+    setTimeout(() => contenedor.remove(), 1200);
+}
+
+// IMPRESIÓN COMPROBANTES DE SERVICIOS EXTRA (BAÑO, TICKET PERDIDO, MENSUALES)
+function imprimirTicketServicioExtra(reg, totalTexto){
+    const contenedor = document.createElement('div');
+    contenedor.className = 'ticket-print';
+    
+    contenedor.innerHTML = `
+        <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
+        <p style="font-size: 14px; font-weight: bold; text-align: center;">TORRE GRANADOS</p>
+        <hr>
+        <p style="font-size: 14px; font-weight: bold; text-align: center;">${reg.tipo}</p>
+        <h1 style="font-size: 32px; margin: 5px 0; text-align: center;">${totalTexto}</h1>
+        <hr>
+        <p><b>DETALLE:</b> ${reg.placa}</p>
+        <p><b>FECHA:</b> ${reg.fecha}</p>
+        <p><b>OPERADOR:</b> ${reg.operador.toUpperCase()}</p>
+        <hr>
+        <p style="font-weight: bold; font-size: 11px; text-align: center;">COMPROBANTE DE PAGO</p>
+    `;
+    
+    document.body.appendChild(contenedor);
+    
+    if(window.AndroidPrinter){
+        window.AndroidPrinter.imprimirVista("Comprobante_" + reg.tipo);
     }
     
     setTimeout(() => contenedor.remove(), 1200);

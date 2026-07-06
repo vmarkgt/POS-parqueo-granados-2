@@ -15,31 +15,10 @@ window.onload = () => {
     }
 };
 
-// RECUPERACIÓN SEGURA DE DATOS (CONVERSIÓN DE FECHAS)
-let activos = [];
-try {
-    let almacenados = localStorage.getItem("activos");
-    if(almacenados) {
-        activos = JSON.parse(almacenados).map(v => {
-            return {
-                placa: v.placa,
-                horaEntrada: new Date(v.horaEntrada),
-                user: v.user || "desconocido",
-                sellos: parseInt(v.sellos) || 0
-            };
-        });
-    }
-} catch(e) {
-    activos = [];
-}
-
-let historial = [];
-try {
-    let histAlmacenado = localStorage.getItem("historial");
-    if(histAlmacenado) historial = JSON.parse(histAlmacenado);
-} catch(e) {
-    historial = [];
-}
+// DATOS DE VEHÍCULOS Y MOVIMIENTOS
+let activos = JSON.parse(localStorage.getItem("activos")) || [];
+activos = activos.map(v => ({...v, horaEntrada: new Date(v.horaEntrada), sellos: v.sellos || 0}));
+let historial = JSON.parse(localStorage.getItem("historial")) || [];
 
 // RELOJ EN TIEMPO REAL
 setInterval(() => {
@@ -75,13 +54,10 @@ function registrarEntrada(){
     let input = document.getElementById("plateInput");
     let placa = input.value.trim().toUpperCase();
     if(!placa) return;
-    
-    let v = {placa: placa, horaEntrada: new Date(), user: usuarioActivo ? usuarioActivo.user : "sistema", sellos: 0};
+    let v = {placa, horaEntrada: new Date(), user: usuarioActivo.user, sellos: 0};
     activos.push(v);
     localStorage.setItem("activos", JSON.stringify(activos));
-    
     imprimirTicketEntrada(v);
-    
     input.value = "";
     actualizarLista();
 }
@@ -90,13 +66,14 @@ function registrarEntrada(){
 function cobrarTicketPerdido() {
     let placa = prompt("Ingrese la PLACA del vehículo:");
     if(!placa) return;
-    historial.push({placa: "T. PERDIDO: " + placa.toUpperCase(), tipo: "TICKET PERDIDO", precio: 25, fecha: new Date().toLocaleDateString(), operador: usuarioActivo ? usuarioActivo.user : "sistema", valorSello: 0});
+    historial.push({placa: "T. PERDIDO: " + placa.toUpperCase(), tipo: "TICKET PERDIDO", precio: 25, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
     alert("Cobro registrado (Q25)");
 }
 
+// USO DE BAÑO
 function cobrarBaño() {
-    historial.push({placa: "USO DE BAÑO", tipo: "BAÑO", precio: 3, fecha: new Date().toLocaleDateString(), operador: usuarioActivo ? usuarioActivo.user : "sistema", valorSello: 0});
+    historial.push({placa: "USO DE BAÑO", tipo: "BAÑO", precio: 3, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
     alert("Uso de baño registrado (Q3)");
 }
@@ -108,7 +85,7 @@ function guardarMensualidad() {
     const nombre = document.getElementById("mNombre").value;
     const costo = parseFloat(document.getElementById("mCosto").value);
     if(!nombre || !costo) return alert("Faltan datos");
-    historial.push({placa: `MENSUAL: ${nombre.toUpperCase()}`, tipo: "MENSUAL", precio: costo, fecha: new Date().toLocaleDateString(), operador: usuarioActivo ? usuarioActivo.user : "sistema", valorSello: 0});
+    historial.push({placa: `MENSUAL: ${nombre.toUpperCase()}`, tipo: "MENSUAL", precio: costo, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
     cerrarModalMensual();
     alert("Pago mensual guardado");
@@ -143,7 +120,7 @@ function darSalida(index){
         sellos: v.sellos,
         valorSello: (v.sellos > 0) ? valSelloTotal - precio : 0,
         precio: precio,
-        operador: usuarioActivo ? usuarioActivo.user : "sistema"
+        operador: usuarioActivo.user
     };
 
     historial.push(registro);
@@ -156,7 +133,6 @@ function darSalida(index){
 
 function actualizarLista(){
     let cont = document.getElementById("activeList");
-    if(!cont) return;
     cont.innerHTML = "";
     activos.forEach((v, i) => {
         let div = document.createElement("div"); div.className = "vehiculo-item";
@@ -175,7 +151,7 @@ function toggleHistorial(){
     if(box.style.display === "none") {
         box.style.display = "block";
         let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
-        if(usuarioActivo && usuarioActivo.rol === "ADMIN") {
+        if(usuarioActivo.rol === "ADMIN") {
             html += `<button class="ios-btn-danger" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
         } else {
             html += `<button class="ios-btn-danger" style="background:#ff9500;" onclick="cerrarTurnoOperador()">CERRAR TURNO (BORRAR MI HISTORIAL)</button>`;
@@ -201,64 +177,61 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- PROCESO NATIVO DE IMPRESIÓN DIRECTO ---
+// --- IMPRESIÓN EXCLUSIVA PARA APK ANDROID (PRINTMANAGER BRIDGE) ---
 
 function imprimirTicketEntrada(v){
+    const fechaHora = new Date();
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
     
     contenedor.innerHTML = `
-        <div style="text-align: center; width: 100%; font-family: monospace; color: #000;">
-            <p style="margin: 0; font-weight: bold; font-size: 16px;">TORRE GRANADOS</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 10px 0; font-size: 26px; font-weight: bold;">PLACA: ${v.placa}</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 5px 0; text-align: left;">ENTRADA: ${new Date().toLocaleTimeString()}</p>
-            <p style="margin: 5px 0; text-align: left;">FECHA:   ${new Date().toLocaleDateString()}</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 10px 0 0 0; font-weight: bold;">30 MIN GRATIS POR SELLO</p>
-            <br><br><br><br>
-        </div>
+        <img src="logotorre.png" width="90" style="display: block; margin: 0 auto 5px auto;">
+        <p style="font-size: 14px; font-weight: bold;">TORRE GRANADOS</p>
+        <hr>
+        <h1>${v.placa}</h1>
+        <hr>
+        <p><b>ENTRADA:</b> ${fechaHora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+        <p><b>FECHA:</b> ${fechaHora.toLocaleDateString()}</p>
+        <hr>
+        <p style="font-weight: bold; font-size: 11px;">30 MIN GRATIS POR SELLO</p>
     `;
     
     document.body.appendChild(contenedor);
     
-    // Llamada directa al puente nativo de Android
-    window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
+    if(window.AndroidPrinter){
+        window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
+    }
     
-    contenedor.remove();
+    setTimeout(() => contenedor.remove(), 1200);
 }
 
 function imprimirTicketSalida(h){
-    let visualPrecio = h.precio > 0 ? `Q${h.precio}.00` : `Q0.00`;
+    const visualPrecio = h.precio > 0 ? `Q${h.precio}.00` : `Q0.00`;
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
     
     contenedor.innerHTML = `
-        <div style="text-align: center; width: 100%; font-family: monospace; color: #000;">
-            <p style="margin: 0; font-weight: bold; font-size: 16px;">TORRE GRANADOS</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 5px 0; font-size: 20px; font-weight: bold;">PLACA: ${h.placa}</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 15px 0; font-size: 28px; font-weight: bold;">TOTAL: ${visualPrecio}</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 5px 0; text-align: left;">E: ${h.horaE} | S: ${h.horaS}</p>
-            <p style="margin: 5px 0; text-align: left;">FECHA: ${h.fecha}</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 10px 0 0 0; font-weight: bold;">¡GRACIAS POR SU VISITA!</p>
-            <br><br><br><br>
-        </div>
+        <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
+        <hr>
+        <p style="font-size: 15px; font-weight: bold;">PLACA: ${h.placa}</p>
+        <h1 style="font-size: 36px; margin: 5px 0;">${visualPrecio}</h1>
+        <hr>
+        <p><b>E:</b> ${h.horaE} | <b>S:</b> ${h.horaS}</p>
+        <p><b>FECHA:</b> ${h.fecha}</p>
+        <hr>
+        <p style="font-weight: bold; font-size: 11px;">¡GRACIAS POR SU VISITA!</p>
     `;
     
     document.body.appendChild(contenedor);
     
-    // Llamada directa al puente nativo de Android
-    window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
+    if(window.AndroidPrinter){
+        window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
+    }
     
-    contenedor.remove();
+    setTimeout(() => contenedor.remove(), 1200);
 }
 
-// GENERACIÓN DE REPORTE NATIVO TÉRMICO
+// GENERACIÓN DE REPORTE FINAL
 function generarReporteHTML() {
     let trabajador = prompt("Nombre del trabajador:");
     if (!trabajador) return;
@@ -267,38 +240,42 @@ function generarReporteHTML() {
     let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
     let totalSoloVehiculos = vehiculos.reduce((s, x) => s + x.precio, 0);
     let totalOtros = otros.reduce((s, x) => s + x.precio, 0);
+    let totalSellos = historial.reduce((s, x) => s + (x.valorSello || 0), 0);
 
-    let contenedor = document.createElement("div");
-    contenedor.className = 'ticket-print';
+    let reportContainer = document.createElement("div");
+    reportContainer.style.position = "fixed"; reportContainer.style.left = "-9999px";
+    reportContainer.style.width = "595px"; reportContainer.style.background = "white"; reportContainer.style.padding = "40px";
 
-    contenedor.innerHTML = `
-        <div style="width: 100%; font-family: monospace; color: #000; font-size: 12px;">
-            <center>
-                <p style="margin: 0; font-weight: bold; font-size: 16px;">REPORTE DE TURNO</p>
-                <p style="margin: 0; font-size: 14px;">TORRE GRANADOS</p>
-            </center>
-            <p style="margin: 10px 0 5px 0;"><b>OPERADOR:</b> ${trabajador.toUpperCase()}</p>
-            <p style="margin: 0 0 10px 0;"><b>FECHA:</b> ${new Date().toLocaleDateString()}</p>
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <center><p style="margin: 5px 0; font-weight:bold;">DETALLE VEHÍCULOS</p></center>
-            ${vehiculos.map(x => `<p style="margin: 3px 0; display:flex; justify-content:space-between;"><span>${x.placa} (${x.tipo})</span> <span>Q${x.precio}.00</span></p>`).join('')}
-            
-            ${otros.length > 0 ? `
-                <p style="margin: 3px 0;">--------------------------------</p>
-                <center><p style="margin: 5px 0; font-weight:bold;">OTROS SERVICIOS</p></center>
-                ${otros.map(x => `<p style="margin: 3px 0; display:flex; justify-content:space-between;"><span>${x.placa}</span> <span>Q${x.precio}.00</span></p>`).join('')}
-            ` : ''}
-            <p style="margin: 3px 0;">--------------------------------</p>
-            <p style="margin: 5px 0; font-size: 14px;">Total Autos: Q${totalSoloVehiculos}.00</p>
-            <p style="margin: 5px 0; font-size: 14px;">Otros Serv: Q${totalOtros}.00</p>
-            <p style="margin: 8px 0; font-size: 16px; font-weight: bold; display:flex; justify-content:space-between;"><span>TOTAL CAJA:</span> <span>Q${totalCaja}.00</span></p>
-            <br><br><br><br>
+    reportContainer.innerHTML = `
+        <div style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial;">
+            <center><img src="logotorre.png" width="180"><h1>REPORTE DE TURNO</h1></center>
+            <div style="display:flex; justify-content:space-between; margin-top:30px;">
+                <span><b>OPERADOR:</b> ${trabajador.toUpperCase()}</span>
+                <span><b>FECHA:</b> ${new Date().toLocaleDateString()}</span>
+            </div>
+            <hr>
+            <h3>DETALLE DE VEHÍCULOS</h3>
+            <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                <tr style="border-bottom:2px solid #000; text-align:left;"><th>Placa</th><th>Tipo</th><th style="text-align:right;">Monto</th></tr>
+                ${vehiculos.map(x => `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${x.placa}</td><td>${x.tipo}</td><td style="text-align:right;">${x.precio > 0 ? 'Q'+x.precio+'.00' : 'Q0.00 (Q'+x.valorSello+')'}</td></tr>`).join('')}
+            </table>
+            ${otros.length > 0 ? `<h3 style="margin-top:20px;">OTROS SERVICIOS</h3><table style="width:100%; font-size:12px; border-collapse:collapse;">${otros.map(x => `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${x.placa}</td><td style="text-align:right;">Q${x.precio}.00</td></tr>`).join('')}</table>` : ''}
+            <div style="margin-top:40px; border:2px solid #000; padding:20px; background:#f9f9f9;">
+                <table style="width:100%; font-size:18px;">
+                    <tr><td>Total Vehículos:</td><td style="text-align:right;">Q${totalSoloVehiculos}.00</td></tr>
+                    <tr><td>Otros Servicios:</td><td style="text-align:right;">Q${totalOtros}.00</td></tr>
+                    <tr style="font-size:24px; font-weight:bold;"><td>TOTAL CAJA:</td><td style="text-align:right;">Q${totalCaja}.00</td></tr>
+                </table>
+            </div>
         </div>
     `;
 
-    document.body.appendChild(contenedor);
-    
-    window.AndroidPrinter.imprimirVista("Reporte_" + trabajador.toUpperCase());
-    
-    contenedor.remove();
+    document.body.appendChild(reportContainer);
+    html2canvas(reportContainer, {scale: 2}).then(canvas => {
+        let link = document.createElement("a");
+        link.download = `Reporte_${trabajador.toUpperCase()}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+        document.body.removeChild(reportContainer);
+    });
 }

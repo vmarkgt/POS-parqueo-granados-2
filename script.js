@@ -15,10 +15,31 @@ window.onload = () => {
     }
 };
 
-// DATOS DE VEHÍCULOS Y MOVIMIENTOS
-let activos = JSON.parse(localStorage.getItem("activos")) || [];
-activos = activos.map(v => ({...v, horaEntrada: new Date(v.horaEntrada), sellos: v.sellos || 0}));
-let historial = JSON.parse(localStorage.getItem("historial")) || [];
+// RECUPERACIÓN SEGURA DE DATOS (CONVERSIÓN DE FECHAS)
+let activos = [];
+try {
+    let almacenados = localStorage.getItem("activos");
+    if(almacenados) {
+        activos = JSON.parse(almacenados).map(v => {
+            return {
+                placa: v.placa,
+                horaEntrada: new Date(v.horaEntrada), // Fuerza a que vuelva a ser un objeto de fecha real
+                user: v.user || "desconocido",
+                sellos: parseInt(v.sellos) || 0
+            };
+        });
+    }
+} catch(e) {
+    activos = [];
+}
+
+let historial = [];
+try {
+    let histAlmacenado = localStorage.getItem("historial");
+    if(histAlmacenado) historial = JSON.parse(histAlmacenado);
+} catch(e) {
+    historial = [];
+}
 
 // RELOJ EN TIEMPO REAL
 setInterval(() => {
@@ -55,11 +76,10 @@ function registrarEntrada(){
     let placa = input.value.trim().toUpperCase();
     if(!placa) return;
     
-    let v = {placa: placa, horaEntrada: new Date(), user: usuarioActivo.user, sellos: 0};
+    let v = {placa: placa, horaEntrada: new Date(), user: usuarioActivo ? usuarioActivo.user : "sistema", sellos: 0};
     activos.push(v);
     localStorage.setItem("activos", JSON.stringify(activos));
     
-    // Llamada directa sin esperas
     imprimirTicketEntrada(v);
     
     input.value = "";
@@ -70,13 +90,13 @@ function registrarEntrada(){
 function cobrarTicketPerdido() {
     let placa = prompt("Ingrese la PLACA del vehículo:");
     if(!placa) return;
-    historial.push({placa: "T. PERDIDO: " + placa.toUpperCase(), tipo: "TICKET PERDIDO", precio: 25, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
+    historial.push({placa: "T. PERDIDO: " + placa.toUpperCase(), tipo: "TICKET PERDIDO", precio: 25, fecha: new Date().toLocaleDateString(), operador: usuarioActivo ? usuarioActivo.user : "sistema", valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
     alert("Cobro registrado (Q25)");
 }
 
 function cobrarBaño() {
-    historial.push({placa: "USO DE BAÑO", tipo: "BAÑO", precio: 3, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
+    historial.push({placa: "USO DE BAÑO", tipo: "BAÑO", precio: 3, fecha: new Date().toLocaleDateString(), operador: usuarioActivo ? usuarioActivo.user : "sistema", valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
     alert("Uso de baño registrado (Q3)");
 }
@@ -88,7 +108,7 @@ function guardarMensualidad() {
     const nombre = document.getElementById("mNombre").value;
     const costo = parseFloat(document.getElementById("mCosto").value);
     if(!nombre || !costo) return alert("Faltan datos");
-    historial.push({placa: `MENSUAL: ${nombre.toUpperCase()}`, tipo: "MENSUAL", precio: costo, fecha: new Date().toLocaleDateString(), operador: usuarioActivo.user, valorSello: 0});
+    historial.push({placa: `MENSUAL: ${nombre.toUpperCase()}`, tipo: "MENSUAL", precio: costo, fecha: new Date().toLocaleDateString(), operador: usuarioActivo ? usuarioActivo.user : "sistema", valorSello: 0});
     localStorage.setItem("historial", JSON.stringify(historial));
     cerrarModalMensual();
     alert("Pago mensual guardado");
@@ -123,7 +143,7 @@ function darSalida(index){
         sellos: v.sellos,
         valorSello: (v.sellos > 0) ? valSelloTotal - precio : 0,
         precio: precio,
-        operador: usuarioActivo.user
+        operador: usuarioActivo ? usuarioActivo.user : "sistema"
     };
 
     historial.push(registro);
@@ -155,7 +175,7 @@ function toggleHistorial(){
     if(box.style.display === "none") {
         box.style.display = "block";
         let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
-        if(usuarioActivo.rol === "ADMIN") {
+        if(usuarioActivo && usuarioActivo.rol === "ADMIN") {
             html += `<button class="ios-btn-danger" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
         } else {
             html += `<button class="ios-btn-danger" style="background:#ff9500;" onclick="cerrarTurnoOperador()">CERRAR TURNO (BORRAR MI HISTORIAL)</button>`;
@@ -181,7 +201,7 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- IMPRESIÓN DIRECTA NATIVA (CONEXIÓN DIRECTA) ---
+// --- PROCESO DE IMPRESIÓN DIRECTO AL DIÁLOGO NATIVO DE ANDROID ---
 
 function imprimirTicketEntrada(v){
     const contenedor = document.createElement('div');
@@ -203,8 +223,10 @@ function imprimirTicketEntrada(v){
     
     document.body.appendChild(contenedor);
     
-    // Ejecución forzada al puente nativo de Android
-    window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
+    // Llama directamente al puente nativo de tu WebView Android Studio
+    if(window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
+        window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
+    }
     
     contenedor.remove();
 }
@@ -232,13 +254,14 @@ function imprimirTicketSalida(h){
     
     document.body.appendChild(contenedor);
     
-    // Ejecución forzada al puente nativo de Android
-    window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
+    if(window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
+        window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
+    }
     
     contenedor.remove();
 }
 
-// GENERACIÓN DE REPORTE FINAL VISUAL (IMAGEN)
+// GENERACIÓN DE REPORTE UTILIZANDO SISTEMA NATIVO DE IMPRESIÓN (EVITA COPA DE CONEXIÓN HTML2CANVAS)
 function generarReporteHTML() {
     let trabajador = prompt("Nombre del trabajador:");
     if (!trabajador) return;
@@ -248,40 +271,39 @@ function generarReporteHTML() {
     let totalSoloVehiculos = vehiculos.reduce((s, x) => s + x.precio, 0);
     let totalOtros = otros.reduce((s, x) => s + x.precio, 0);
 
-    let reportContainer = document.createElement("div");
-    reportContainer.style.position = "fixed"; reportContainer.style.left = "-9999px";
-    reportContainer.style.width = "595px"; reportContainer.style.background = "white"; reportContainer.style.padding = "40px";
+    let contenedor = document.createElement("div");
+    contenedor.className = 'ticket-print';
 
-    reportContainer.innerHTML = `
-        <div style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial; color: #000;">
-            <center><img src="logotorre.png" width="180"><h1>REPORTE DE TURNO</h1></center>
-            <div style="display:flex; justify-content:space-between; margin-top:30px;">
-                <span><b>OPERADOR:</b> ${trabajador.toUpperCase()}</span>
-                <span><b>FECHA:</b> ${new Date().toLocaleDateString()}</span>
-            </div>
-            <hr>
-            <h3>DETALLE DE VEHÍCULOS</h3>
-            <table style="width:100%; font-size:12px; border-collapse:collapse;">
-                <tr style="border-bottom:2px solid #000; text-align:left;"><th>Placa</th><th>Tipo</th><th style="text-align:right;">Monto</th></tr>
-                ${vehiculos.map(x => `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${x.placa}</td><td>${x.tipo}</td><td style="text-align:right;">${x.precio > 0 ? 'Q'+x.precio+'.00' : 'Q0.00 (Q'+x.valorSello+')'}</td></tr>`).join('')}
-            </table>
-            ${otros.length > 0 ? `<h3 style="margin-top:20px;">OTROS SERVICIOS</h3><table style="width:100%; font-size:12px; border-collapse:collapse;">${otros.map(x => `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${x.placa}</td><td style="text-align:right;">Q${x.precio}.00</td></tr>`).join('')}</table>` : ''}
-            <div style="margin-top:40px; border:2px solid #000; padding:20px; background:#f9f9f9;">
-                <table style="width:100%; font-size:18px;">
-                    <tr><td>Total Vehículos:</td><td style="text-align:right;">Q${totalSoloVehiculos}.00</td></tr>
-                    <tr><td>Otros Servicios:</td><td style="text-align:right;">Q${totalOtros}.00</td></tr>
-                    <tr style="font-size:24px; font-weight:bold;"><td>TOTAL CAJA:</td><td style="text-align:right;">Q${totalCaja}.00</td></tr>
-                </table>
-            </div>
+    contenedor.innerHTML = `
+        <div style="width: 100%; font-family: monospace; color: #000; font-size: 12px;">
+            <center>
+                <p style="margin: 0; font-weight: bold; font-size: 16px;">REPORTE DE TURNO</p>
+                <p style="margin: 0; font-size: 14px;">TORRE GRANADOS</p>
+            </center>
+            <p style="margin: 10px 0 5px 0;"><b>OPERADOR:</b> ${trabajador.toUpperCase()}</p>
+            <p style="margin: 0 0 10px 0;"><b>FECHA:</b> ${new Date().toLocaleDateString()}</p>
+            <p style="margin: 3px 0;">--------------------------------</p>
+            <center><p style="margin: 5px 0; font-weight:bold;">DETALLE VEHÍCULOS</p></center>
+            ${vehiculos.map(x => `<p style="margin: 3px 0; display:flex; justify-content:space-between;"><span>${x.placa} (${x.tipo})</span> <span>Q${x.precio}.00</span></p>`).join('')}
+            
+            ${otros.length > 0 ? `
+                <p style="margin: 3px 0;">--------------------------------</p>
+                <center><p style="margin: 5px 0; font-weight:bold;">OTROS SERVICIOS</p></center>
+                ${otros.map(x => `<p style="margin: 3px 0; display:flex; justify-content:space-between;"><span>${x.placa}</span> <span>Q${x.precio}.00</span></p>`).join('')}
+            ` : ''}
+            <p style="margin: 3px 0;">--------------------------------</p>
+            <p style="margin: 5px 0; font-size: 14px;">Total Autos: Q${totalSoloVehiculos}.00</p>
+            <p style="margin: 5px 0; font-size: 14px;">Otros Serv: Q${totalOtros}.00</p>
+            <p style="margin: 8px 0; font-size: 16px; font-weight: bold; display:flex; justify-content:space-between;"><span>TOTAL CAJA:</span> <span>Q${totalCaja}.00</span></p>
+            <br><br><br><br>
         </div>
     `;
 
-    document.body.appendChild(reportContainer);
-    html2canvas(reportContainer, {scale: 2}).then(canvas => {
-        let link = document.createElement("a");
-        link.download = `Reporte_${trabajador.toUpperCase()}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-        document.body.removeChild(reportContainer);
-    });
+    document.body.appendChild(contenedor);
+    
+    if(window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
+        window.AndroidPrinter.imprimirVista("Reporte_" + trabajador.toUpperCase());
+    }
+    
+    contenedor.remove();
 }

@@ -23,7 +23,7 @@ try {
         activos = JSON.parse(almacenados).map(v => {
             return {
                 placa: v.placa,
-                horaEntrada: new Date(v.horaEntrada), // Fuerza a que vuelva a ser un objeto de fecha real
+                horaEntrada: new Date(v.horaEntrada),
                 user: v.user || "desconocido",
                 sellos: parseInt(v.sellos) || 0
             };
@@ -201,7 +201,7 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- PROCESO DE IMPRESIÓN DIRECTO AL DIÁLOGO NATIVO DE ANDROID ---
+// --- PROCESO NATIVO DE IMPRESIÓN DIRECTO ---
 
 function imprimirTicketEntrada(v){
     const contenedor = document.createElement('div');
@@ -223,10 +223,8 @@ function imprimirTicketEntrada(v){
     
     document.body.appendChild(contenedor);
     
-    // Llama directamente al puente nativo de tu WebView Android Studio
-    if(window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
-        window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
-    }
+    // Llamada directa al puente nativo de Android
+    window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
     
     contenedor.remove();
 }
@@ -254,14 +252,13 @@ function imprimirTicketSalida(h){
     
     document.body.appendChild(contenedor);
     
-    if(window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
-        window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
-    }
+    // Llamada directa al puente nativo de Android
+    window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
     
     contenedor.remove();
 }
 
-// GENERACIÓN DE REPORTE UTILIZANDO SISTEMA NATIVO DE IMPRESIÓN (EVITA COPA DE CONEXIÓN HTML2CANVAS)
+// GENERACIÓN DE REPORTE NATIVO TÉRMICO
 function generarReporteHTML() {
     let trabajador = prompt("Nombre del trabajador:");
     if (!trabajador) return;
@@ -301,9 +298,7 @@ function generarReporteHTML() {
 
     document.body.appendChild(contenedor);
     
-    if(window.AndroidPrinter && typeof window.AndroidPrinter.imprimirVista === "function") {
-        window.AndroidPrinter.imprimirVista("Reporte_" + trabajador.toUpperCase());
-    }
+    window.AndroidPrinter.imprimirVista("Reporte_" + trabajador.toUpperCase());
     
     contenedor.remove();
 }

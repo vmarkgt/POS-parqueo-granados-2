@@ -176,118 +176,14 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- IMPRESIÓN AJUSTADA (TEXTOS SEGUROS PARA EPSON TM-T20III) ---
+// --- IMPRESIÓN DIRECTA MEDIANTE ANDROID INTENT (INNER PRINTER SEGURO) ---
 
 function imprimirTicketEntrada(v){
-    let w = window.open("","","width=300,height=900");
-    w.document.write(`
-        <html><head><style>
-            @page { margin: 0; }
-            body { 
-                font-family: 'Arial', sans-serif; 
-                width: 260px; 
-                margin: 0; 
-                padding: 30px 5px 220px 5px; 
-                text-align: center;
-                min-height: 600px; 
-            }
-            h1 { font-size: 52px; margin: 15px 0; font-weight: 900; letter-spacing: -1px; }
-            p { margin: 5px 0; }
-        </style></head>
-        <body onload="window.print();window.close()">
-            <img src="logotorre.png" width="130">
-            <p style="font-size: 18px; font-weight: bold;">TORRE GRANADOS</p>
-            <hr style="border: 1px solid #000;">
-            <h1>${v.placa}</h1>
-            <hr style="border: 1px solid #000;">
-            <p style="font-size: 16px;">
-                <b>ENTRADA:</b> ${new Date().toLocaleTimeString()}<br>
-                <b>FECHA:</b> ${new Date().toLocaleDateString()}
-            </p>
-            <p style="font-size: 14px; font-weight: bold; margin-top:10px;">30 MIN GRATIS POR SELLO</p>
-            <div style="margin-top: 180px; color: white;">.</div> 
-        </body></html>`);
-    w.document.close();
-}
-
-function imprimirTicketSalida(h){
-    let w = window.open("","","width=300,height=800");
-    let visualPrecio = h.precio > 0 ? `Q${h.precio}.00` : `Q0.00`;
-    w.document.write(`
-        <html><head><style>
-            @page { margin: 0; }
-            body { 
-                font-family: 'Arial', sans-serif; 
-                width: 260px; 
-                margin: 0; 
-                padding: 30px 5px 140px 5px; 
-                text-align: center;
-                min-height: 450px;
-            }
-            .precio-grande { font-size: 58px; font-weight: 900; margin: 15px 0; letter-spacing: -1px; }
-            p { margin: 5px 0; }
-        </style></head>
-        <body onload="window.print();window.close()">
-            <img src="logotorre.png" width="110">
-            <hr style="border: 1px solid #000;">
-            <p style="font-size: 24px; font-weight: bold;">PLACA: ${h.placa}</p>
-            <div class="precio-grande">${visualPrecio}</div>
-            <hr style="border: 1px solid #000;">
-            <p style="font-size: 15px;">
-                E: ${h.horaE} | S: ${h.horaS}<br>
-                FECHA: ${h.fecha}
-            </p>
-            <p style="font-size: 14px; font-weight: bold; margin-top: 10px;">¡GRACIAS POR SU VISITA!</p>
-            <div style="margin-top: 100px; color: white;">.</div>
-        </body></html>`);
-    w.document.close();
-}
-
-// GENERACIÓN DE REPORTE FINAL
-function generarReporteHTML() {
-    let trabajador = prompt("Nombre del trabajador:");
-    if (!trabajador) return;
-    let vehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL");
-    let otros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL");
-    let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
-    let totalSoloVehiculos = vehiculos.reduce((s, x) => s + x.precio, 0);
-    let totalOtros = otros.reduce((s, x) => s + x.precio, 0);
-    let totalSellos = historial.reduce((s, x) => s + (x.valorSello || 0), 0);
-
-    let reportContainer = document.createElement("div");
-    reportContainer.style.position = "fixed"; reportContainer.style.left = "-9999px";
-    reportContainer.style.width = "595px"; reportContainer.style.background = "white"; reportContainer.style.padding = "40px";
-
-    reportContainer.innerHTML = `
-        <div style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial;">
-            <center><img src="logotorre.png" width="180"><h1>REPORTE DE TURNO</h1></center>
-            <div style="display:flex; justify-content:space-between; margin-top:30px;">
-                <span><b>OPERADOR:</b> ${trabajador.toUpperCase()}</span>
-                <span><b>FECHA:</b> ${new Date().toLocaleDateString()}</span>
-            </div>
-            <hr>
-            <h3>DETALLE DE VEHÍCULOS</h3>
-            <table style="width:100%; font-size:12px; border-collapse:collapse;">
-                <tr style="border-bottom:2px solid #000; text-align:left;"><th>Placa</th><th>Tipo</th><th style="text-align:right;">Monto</th></tr>
-                ${vehiculos.map(x => `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${x.placa}</td><td>${x.tipo}</td><td style="text-align:right;">${x.precio > 0 ? 'Q'+x.precio+'.00' : 'Q0.00 (Q'+x.valorSello+')'}</td></tr>`).join('')}
-            </table>
-            ${otros.length > 0 ? `<h3 style="margin-top:20px;">OTROS SERVICIOS</h3><table style="width:100%; font-size:12px; border-collapse:collapse;">${otros.map(x => `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${x.placa}</td><td style="text-align:right;">Q${x.precio}.00</td></tr>`).join('')}</table>` : ''}
-            <div style="margin-top:40px; border:2px solid #000; padding:20px; background:#f9f9f9;">
-                <table style="width:100%; font-size:18px;">
-                    <tr><td>Total Vehículos:</td><td style="text-align:right;">Q${totalSoloVehiculos}.00</td></tr>
-                    <tr><td>Otros Servicios:</td><td style="text-align:right;">Q${totalOtros}.00</td></tr>
-                    <tr style="font-size:24px; font-weight:bold;"><td>TOTAL CAJA:</td><td style="text-align:right;">Q${totalCaja}.00</td></tr>
-                </table>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(reportContainer);
-    html2canvas(reportContainer, {scale: 2}).then(canvas => {
-        let link = document.createElement("a");
-        link.download = `Reporte_${trabajador.toUpperCase()}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-        document.body.removeChild(reportContainer);
-    });
-}
+    let texto = "";
+    texto += "        TORRE GRANADOS        \n";
+    texto += "--------------------------------\n";
+    texto += "\n";
+    texto += "  PLACA: " + v.placa + "\n";
+    texto += "\n";
+    texto += "--------------------------------\n";
+    texto += "ENTRADA: " + new Date().

@@ -50,16 +50,16 @@ function login(){
 }
 
 function obtenerOperadorActual() {
-    if (usuarioActivo && usuarioActivo.user) return usuarioActivo.user;
+    if (usuarioActivo && usuarioActivo.user) return usuarioActivo.user.trim().toUpperCase();
     const respaldo = localStorage.getItem("usuarioLogueadoGenerico");
-    if (respaldo) return JSON.parse(respaldo).user;
-    return "torregranados";
+    if (respaldo) return JSON.parse(respaldo).user.trim().toUpperCase();
+    return "TORREGRANADOS";
 }
 
 function obtenerRolActual() {
-    if (usuarioActivo && usuarioActivo.rol) return usuarioActivo.rol;
+    if (usuarioActivo && usuarioActivo.rol) return usuarioActivo.rol.toUpperCase();
     const respaldo = localStorage.getItem("usuarioLogueadoGenerico");
-    if (respaldo) return JSON.parse(respaldo).rol;
+    if (respaldo) return JSON.parse(respaldo).rol.toUpperCase();
     return "OPERADOR";
 }
 
@@ -88,8 +88,9 @@ function abrirModalTicketPerdido() {
 }
 function cerrarModalTicketPerdido() { document.getElementById("modalTicketPerdido").style.display = "none"; }
 
+// 3. SE QUITÓ EL NOMBRE POR DEFECTO PARA QUE EL CAMPO APAREZCA VACÍO
 function abrirModalReporte() {
-    document.getElementById("repTrabajador").value = obtenerOperadorActual().toUpperCase();
+    document.getElementById("repTrabajador").value = ""; 
     document.getElementById("modalReporte").style.display = "block";
 }
 function cerrarModalReporte() { document.getElementById("modalReporte").style.display = "none"; }
@@ -121,6 +122,7 @@ function guardarTicketPerdido() {
     alert("Cobro registrado (Q25) - Ticket Impreso");
 }
 
+// 1. NOTIFICACIÓN VISUAL EN EL BOTÓN PARA EL USO DE BAÑO
 function cobrarBaño() {
     let registro = {
         placa: "USO DE BAÑO", 
@@ -132,6 +134,22 @@ function cobrarBaño() {
     };
     historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
+    
+    // Cambia el texto del botón dinámicamente como alerta visual rápida
+    const btnBaño = document.querySelector("button[onclick='cobrarBaño()']");
+    if(btnBaño) {
+        const textoOriginal = btnBaño.innerHTML;
+        btnBaño.innerHTML = "✅ ¡REGISTRADO Q3!";
+        btnBaño.style.background = "#34c759";
+        btnBaño.style.color = "#fff";
+        
+        setTimeout(() => {
+            btnBaño.innerHTML = textoOriginal;
+            btnBaño.style.background = "";
+            btnBaño.style.color = "";
+        }, 2000);
+    }
+    
     alert("Uso de baño registrado (Q3)");
 }
 
@@ -218,7 +236,7 @@ function toggleHistorial(){
     if(!box) return;
     if(box.style.display === "none") {
         box.style.display = "block";
-        let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px; background:#fff; margin:2px 0;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
+        let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px; background:#fff; margin:2px 0;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo}) <span style="font-size:10px; color:#666;">[${h.operador}]</span></div>`).join('');
         if(obtenerRolActual() === "ADMIN") {
             html += `<button class="ios-btn-danger" style="width:100%; margin-top:10px;" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
         } else {
@@ -228,13 +246,24 @@ function toggleHistorial(){
     } else box.style.display = "none";
 }
 
+// 2. CORREGIDO: FILTRADO ABSOLUTO E INMEDIATO DEL TRABAJADOR SIN IMPORTAR MAYÚSCULAS
 function cerrarTurnoOperador(){
-    const opActual = obtenerOperadorActual();
-    if(confirm(`¿Cerrar turno de ${opActual.toUpperCase()}? Limpiará su historial local.`)){
-        historial = historial.filter(x => x.operador !== opActual);
+    const opActual = obtenerOperadorActual().trim().toUpperCase();
+    if(confirm(`¿Cerrar turno de ${opActual}? Esto limpiará de forma definitiva sus registros de caja.`)){
+        
+        // Comparamos convirtiendo a mayúsculas estrictas para eliminar fallos de coincidencia
+        historial = historial.filter(x => x.operador.trim().toUpperCase() !== opActual);
+        
         localStorage.setItem("historial", JSON.stringify(historial));
-        toggleHistorial();
-        alert("Turno finalizado.");
+        
+        // Forzamos el refresco del panel visual
+        let box = document.getElementById("historialBox");
+        if(box && box.style.display !== "none") {
+            box.style.display = "none";
+            toggleHistorial();
+        }
+        
+        alert(`Turno de ${opActual} finalizado y registros locales removidos.`);
     }
 }
 
@@ -266,18 +295,27 @@ function imprimirTicketSalida(h){
 
 function generarReporteHTML() { abrirModalReporte(); }
 
+// 3. REPORTE FILTRADO PARA QUE CALCULE SOLO LO PERTENECIENTE A LA PERSONA QUE ESCRIBE SU NOMBRE
 function ejecutarReporteImpreso() {
     let trabajador = document.getElementById("repTrabajador").value.trim().toUpperCase();
-    if (!trabajador) return alert("Ingrese el nombre del operador");
+    if (!trabajador) return alert("Por favor, escriba su nombre para generar el reporte");
     
-    let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
+    // Filtramos los movimientos del historial que pertenezcan únicamente al nombre ingresado en el input
+    let historialDelTurno = historial.filter(x => x.operador.trim().toUpperCase() === trabajador);
+    
+    if (historialDelTurno.length === 0) {
+        alert(`No se encontraron movimientos registrados bajo el nombre "${trabajador}" en la sesión activa.`);
+        cerrarModalReporte();
+        return;
+    }
+    
+    let totalCaja = historialDelTurno.reduce((s, x) => s + x.precio, 0);
+    let totalVehiculos = historialDelTurno.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, x) => s + x.precio, 0);
+    let totalOtros = historialDelTurno.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, x) => s + x.precio, 0);
+    
     let fechaHoy = new Date().toLocaleDateString();
 
     if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
-        // En lugar de intentar descargar archivos, mandamos los datos agrupados de caja al hardware de impresión
-        let totalVehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, x) => s + x.precio, 0);
-        let totalOtros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, x) => s + x.precio, 0);
-        
         let resumenTexto = `V: Q${totalVehiculos}.00 | OTROS: Q${totalOtros}.00`;
         
         window.AndroidPrinter.ticketExtra(
@@ -287,9 +325,9 @@ function ejecutarReporteImpreso() {
             fechaHoy, 
             trabajador
         );
-        alert("Reporte enviado con éxito a la ticketera física.");
+        alert("Reporte de turno generado y enviado a la impresora.");
     } else {
-        alert(`Modo PC - Total en Caja: Q${totalCaja}.00`);
+        alert(`Modo PC - Turno [${trabajador}] -> Total: Q${totalCaja}.00 (Vehículos: Q${totalVehiculos}, Otros: Q${totalOtros})`);
     }
     
     cerrarModalReporte();

@@ -10,7 +10,7 @@ body, html { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystem
 
 /* RELOJ */
 .reloj-viva { text-align: center; padding: 15px; border-bottom: 0px solid #000000; }
-#reloj { font-size: 55px; color: #ffffff; font-weight: 900; letter-spacing: -1px; margin: 0; }
+#reloj { font-size: 55px; color: #red; font-weight: 900; letter-spacing: -1px; margin: 0; }
 #fecha { font-size: 18px; color: #8e8e93; font-weight: 600; }
 
 /* APP LAYOUT */

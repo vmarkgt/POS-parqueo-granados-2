@@ -28,8 +28,12 @@ setInterval(() => {
     if(!relojCont) return;
     const ahora = new Date();
     relojCont.innerText = ahora.toLocaleTimeString();
-    document.getElementById('fecha').innerText = ahora.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('fecha').innerText = SecurityDateString(ahora);
 }, 1000);
+
+function SecurityDateString(dateObj) {
+    return dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
 
 // FUNCIÓN DE ACCESO
 function login(){
@@ -66,13 +70,13 @@ function registrarEntrada(){
     actualizarLista();
 }
 
-// REGLA 1: COBRAR TICKET PERDIDO (SÍ IMPRIME - NATIVO)
+// 1. TICKET PERDIDO: IMPRIME NATIVO Y SICE "REPOSICIÓN TICKET PERDIDO"
 function cobrarTicketPerdido() {
     let placa = prompt("Ingrese la PLACA del vehículo:");
     if(!placa) return;
     
     let registro = {
-        placa: "PLACA: " + placa.toUpperCase(), 
+        placa: placa.toUpperCase(), 
         tipo: "TICKET PERDIDO", 
         precio: 25, 
         fecha: new Date().toLocaleDateString(), 
@@ -83,25 +87,28 @@ function cobrarTicketPerdido() {
     historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
     
-    // Ejecuta la impresión nativa heredada sin tocar layouts de Android
+    // Mandamos al canvas nativo el título exacto solicitado
     if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
-        window.AndroidPrinter.ticketExtra("REPOSICIÓN TICKET PERDIDO", "Q25.00", registro.placa, registro.fecha, registro.operador);
+        window.AndroidPrinter.ticketExtra("REPOSICIÓN TICKET PERDIDO", "Q25.00", "PLACA: " + registro.placa, registro.fecha, registro.operador);
     }
     
-    alert("Cobro registrado e imprimiendo (Q25)");
+    alert("Cobro registrado (Q25) - Ticket impreso");
 }
 
-// REGLA 2: COBRAR BAÑO (SOLO REGISTRA EN SILENCIO - NO IMPRIME)
+// 2. USO DE BAÑO: SOLO REGISTRA EN SILENCIO (NO IMPRIME NADA)
 function cobrarBaño() {
-    historial.push({
+    let registro = {
         placa: "USO DE BAÑO", 
         tipo: "BAÑO", 
         precio: 3, 
         fecha: new Date().toLocaleDateString(), 
         operador: usuarioActivo.user, 
         valorSello: 0
-    });
+    };
+    
+    historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
+    
     alert("Uso de baño registrado en caja (Q3)");
 }
 
@@ -201,14 +208,14 @@ function toggleHistorial(){
     } else box.style.display = "none";
 }
 
-// REGLA 3: CIERRE DE TURNO FILTRADO (SOLO OPERADOR ACTUAL - ADMIN INTACTO)
+// 3. CERRAR TURNO FILTRADO: BORRA AL OPERADOR PERO DEJA AL ADMIN INTACTO
 function cerrarTurnoOperador(){
     if(confirm("¿Seguro que desea cerrar su turno? Esto limpiará su historial de la sesión activa.")){
-        // Elimina únicamente los registros que pertenecen al operador logueado en este instante
+        // Elimina únicamente los movimientos hechos por el operador actual
         historial = historial.filter(x => x.operador !== usuarioActivo.user);
         localStorage.setItem("historial", JSON.stringify(historial));
         toggleHistorial();
-        alert("Turno finalizado. Historial del operador limpio.");
+        alert("Turno finalizado. Su historial local se ha limpiado.");
     }
 }
 
@@ -240,7 +247,7 @@ function imprimirTicketSalida(h){
     }
 }
 
-// REGLA 4: REPORTE GENERAL VISUAL (BAJA IMAGEN PNG A LA GALERÍA - NO ENVIAR A TICKET)
+// 4. REPORTE GENERAL EN IMAGEN: GENERA PNG Y DESCARGA (NO SE IMPRIME)
 function generarReporteHTML() {
     let trabajador = prompt("Nombre del trabajador:");
     if (!trabajador) return;
@@ -313,6 +320,7 @@ function generarReporteHTML() {
 
     document.body.appendChild(reportContainer);
     
+    // Generamos la captura limpia a imagen usando html2canvas
     html2canvas(reportContainer, {scale: 2}).then(canvas => {
         let link = document.createElement("a");
         link.download = `Reporte_${trabajador.toUpperCase()}_${new Date().toISOString().slice(0,10)}.png`;

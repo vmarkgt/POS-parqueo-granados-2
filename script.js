@@ -205,86 +205,107 @@ function borrarHistorialTotal(){
     }
 }
 
-// --- IMPRESIÓN EXCLUSIVA PARA APK ANDROID (PRINTMANAGER BRIDGE) ---
+// --- PROCESAMIENTO E IMPRESIÓN EXCLUSIVA POR IMAGEN (BASE64) ---
+
+function procesarEImprimirNativo(contenedor) {
+    document.body.appendChild(contenedor);
+    setTimeout(() => {
+        html2canvas(contenedor, {
+            scale: 2,
+            backgroundColor: "#ffffff",
+            useCORS: true
+        }).then(canvas => {
+            const base64Data = canvas.toDataURL("image/png").split(',')[1];
+            if (window.AndroidPrinter) {
+                window.AndroidPrinter.imprimirImagenBase64(base64Data);
+            } else {
+                window.print();
+            }
+            contenedor.remove();
+        });
+    }, 200);
+}
 
 function imprimirTicketEntrada(v){
     const fechaHora = new Date();
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
+    contenedor.style.width = "280px";
+    contenedor.style.padding = "10px";
+    contenedor.style.color = "#000000";
     
     contenedor.innerHTML = `
-        <img src="logotorre.png" width="90" style="display: block; margin: 0 auto 5px auto;">
-        <p style="font-size: 14px; font-weight: bold; text-align: center;">TORRE GRANADOS</p>
-        <hr>
-        <h1 style="text-align: center;">${v.placa}</h1>
-        <hr>
-        <p><b>ENTRADA:</b> ${fechaHora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-        <p><b>FECHA:</b> ${fechaHora.toLocaleDateString()}</p>
-        <hr>
-        <p style="font-weight: bold; font-size: 11px; text-align: center;">30 MIN GRATIS POR SELLO</p>
+        <center>
+            <img src="logotorre.png" width="90" style="display: block; margin: 0 auto 5px auto;">
+            <p style="font-size: 14px; font-weight: bold; margin: 2px 0;">TORRE GRANADOS</p>
+            <hr style="border-top: 1px dashed #000;">
+            <h1 style="font-size: 32px; margin: 10px 0; text-align: center;">${v.placa}</h1>
+            <hr style="border-top: 1px dashed #000;">
+        </center>
+        <p style="font-size: 12px; margin: 4px 0;"><b>ENTRADA:</b> ${fechaHora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+        <p style="font-size: 12px; margin: 4px 0;"><b>FECHA:</b> ${fechaHora.toLocaleDateString()}</p>
+        <hr style="border-top: 1px dashed #000;">
+        <center>
+            <p style="font-weight: bold; font-size: 11px; margin: 5px 0;">30 MIN GRATIS POR SELLO</p>
+        </center>
     `;
     
-    document.body.appendChild(contenedor);
-    
-    if(window.AndroidPrinter){
-        window.AndroidPrinter.imprimirVista("Ticket_Entrada_" + v.placa);
-    }
-    
-    setTimeout(() => contenedor.remove(), 1200);
+    procesarEImprimirNativo(contenedor);
 }
 
 function imprimirTicketSalida(h){
     const visualPrecio = h.precio > 0 ? `Q${h.precio}.00` : `Q0.00`;
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
+    contenedor.style.width = "280px";
+    contenedor.style.padding = "10px";
+    contenedor.style.color = "#000000";
     
     contenedor.innerHTML = `
-        <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
-        <hr>
-        <p style="font-size: 15px; font-weight: bold; text-align: center;">PLACA: ${h.placa}</p>
-        <h1 style="font-size: 36px; margin: 5px 0; text-align: center;">${visualPrecio}</h1>
-        <hr>
-        <p><b>E:</b> ${h.horaE} | <b>S:</b> ${h.horaS}</p>
-        <p><b>FECHA:</b> ${h.fecha}</p>
-        <hr>
-        <p style="font-weight: bold; font-size: 11px; text-align: center;">¡GRACIAS POR SU VISITA!</p>
+        <center>
+            <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
+            <hr style="border-top: 1px dashed #000;">
+            <p style="font-size: 15px; font-weight: bold; margin: 5px 0; text-align: center;">PLACA: ${h.placa}</p>
+            <h1 style="font-size: 36px; margin: 5px 0; text-align: center;">${visualPrecio}</h1>
+            <hr style="border-top: 1px dashed #000;">
+        </center>
+        <p style="font-size: 12px; margin: 4px 0;"><b>E:</b> ${h.horaE} | <b>S:</b> ${h.horaS}</p>
+        <p style="font-size: 12px; margin: 4px 0;"><b>FECHA:</b> ${h.fecha}</p>
+        <hr style="border-top: 1px dashed #000;">
+        <center>
+            <p style="font-weight: bold; font-size: 11px; margin: 5px 0; text-align: center;">¡GRACIAS POR SU VISITA!</p>
+        </center>
     `;
     
-    document.body.appendChild(contenedor);
-    
-    if(window.AndroidPrinter){
-        window.AndroidPrinter.imprimirVista("Ticket_Salida_" + h.placa);
-    }
-    
-    setTimeout(() => contenedor.remove(), 1200);
+    procesarEImprimirNativo(contenedor);
 }
 
-// IMPRESIÓN COMPROBANTES DE SERVICIOS EXTRA (BAÑO, TICKET PERDIDO, MENSUALES)
 function imprimirTicketServicioExtra(reg, totalTexto){
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
+    contenedor.style.width = "280px";
+    contenedor.style.padding = "10px";
+    contenedor.style.color = "#000000";
     
     contenedor.innerHTML = `
-        <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
-        <p style="font-size: 14px; font-weight: bold; text-align: center;">TORRE GRANADOS</p>
-        <hr>
-        <p style="font-size: 14px; font-weight: bold; text-align: center;">${reg.tipo}</p>
-        <h1 style="font-size: 32px; margin: 5px 0; text-align: center;">${totalTexto}</h1>
-        <hr>
-        <p><b>DETALLE:</b> ${reg.placa}</p>
-        <p><b>FECHA:</b> ${reg.fecha}</p>
-        <p><b>OPERADOR:</b> ${reg.operador.toUpperCase()}</p>
-        <hr>
-        <p style="font-weight: bold; font-size: 11px; text-align: center;">COMPROBANTE DE PAGO</p>
+        <center>
+            <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
+            <p style="font-size: 14px; font-weight: bold; text-align: center; margin: 2px 0;">TORRE GRANADOS</p>
+            <hr style="border-top: 1px dashed #000;">
+            <p style="font-size: 14px; font-weight: bold; text-align: center; margin: 5px 0;">${reg.tipo}</p>
+            <h1 style="font-size: 32px; margin: 5px 0; text-align: center;">${totalTexto}</h1>
+            <hr style="border-top: 1px dashed #000;">
+        </center>
+        <p style="font-size: 12px; margin: 4px 0;"><b>DETALLE:</b> ${reg.placa}</p>
+        <p style="font-size: 12px; margin: 4px 0;"><b>FECHA:</b> ${reg.fecha}</p>
+        <p style="font-size: 12px; margin: 4px 0;"><b>OPERADOR:</b> ${reg.operador.toUpperCase()}</p>
+        <hr style="border-top: 1px dashed #000;">
+        <center>
+            <p style="font-weight: bold; font-size: 11px; text-align: center; margin: 5px 0;">COMPROBANTE DE PAGO</p>
+        </center>
     `;
     
-    document.body.appendChild(contenedor);
-    
-    if(window.AndroidPrinter){
-        window.AndroidPrinter.imprimirVista("Comprobante_" + reg.tipo);
-    }
-    
-    setTimeout(() => contenedor.remove(), 1200);
+    procesarEImprimirNativo(contenedor);
 }
 
 // GENERACIÓN DE REPORTE FINAL

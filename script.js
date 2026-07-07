@@ -274,7 +274,7 @@ function imprimirTicketSalida(h){
 }
 
 // ==========================================================================
-// REPORTE GENERAL CON GUARDADO POR TRANSFERENCIA DIRECTA BASE64
+// GENERADOR DE REPORTE CON RENDER 100% IMAGEN COMPATIBLE CON ANDROID (LONG-PRESS)
 // ==========================================================================
 function generarReporteHTML() { abrirModalReporte(); }
 
@@ -371,43 +371,28 @@ function procesarReporteAccion(modo) {
 
         setTimeout(() => {
             html2canvas(targetDOM, {scale: 2, logging: false, useCORS: true}).then(canvas => {
+                // AQUÍ ESTÁ EL TRUCO: Convertimos el canvas a formato Base64 nativo de imagen
                 let base64data = canvas.toDataURL("image/png");
                 
+                // Creamos una etiqueta HTML <img> nativa pura
                 let imgElement = document.createElement("img");
                 imgElement.src = base64data;
+                imgElement.alt = "Reporte de Turno";
                 imgElement.style.maxWidth = "100%";
                 imgElement.style.height = "auto";
+                imgElement.style.display = "block";
                 
+                // Inyectamos el elemento en el modal visual
                 let contenedor = document.getElementById("contenedorRenderImagen");
                 contenedor.innerHTML = ""; 
                 contenedor.appendChild(imgElement);
                 
-                // MÉTODO COMPATIBLE ANDROID WEBVIEW: Forzar la apertura del flujo de datos binario puro
-                let btnDescarga = document.getElementById("btnDescargaInyectada");
-                btnDescarga.onclick = () => {
-                    try {
-                        let win = window.open();
-                        if (win) {
-                            win.document.write(`<iframe src="${base64data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                        } else {
-                            // Alternativa si los popups están bloqueados: simular descarga directa inyectando cabecera octet-stream
-                            let alternateLink = document.createElement("a");
-                            alternateLink.href = base64data.replace("image/png", "image/octet-stream");
-                            alternateLink.download = `Reporte_${trabajador.replace(/\s+/g, '_')}.png`;
-                            document.body.appendChild(alternateLink);
-                            alternateLink.click();
-                            document.body.removeChild(alternateLink);
-                        }
-                    } catch(err) {
-                        alert("Error al procesar almacenamiento: " + err.message);
-                    }
-                };
-
+                // Desplegamos el visor limpio
                 cerrarModalReporte();
                 document.getElementById("modalVerImagen").style.display = "block";
                 document.body.removeChild(targetDOM);
             }).catch(err => {
-                alert("Error generando vista: " + err);
+                alert("Error generando vista de imagen: " + err);
                 document.body.removeChild(targetDOM);
             });
         }, 300);

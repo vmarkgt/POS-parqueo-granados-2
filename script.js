@@ -78,7 +78,6 @@ function registrarEntrada(){
     actualizarLista();
 }
 
-// CONTROL DE MODALES INTERNOS
 function abrirModalMensual() { document.getElementById("modalMensual").style.display = "block"; }
 function cerrarModalMensual() { document.getElementById("modalMensual").style.display = "none"; }
 
@@ -88,14 +87,12 @@ function abrirModalTicketPerdido() {
 }
 function cerrarModalTicketPerdido() { document.getElementById("modalTicketPerdido").style.display = "none"; }
 
-// 3. SE QUITÓ EL NOMBRE POR DEFECTO PARA QUE EL CAMPO APAREZCA VACÍO
 function abrirModalReporte() {
     document.getElementById("repTrabajador").value = ""; 
     document.getElementById("modalReporte").style.display = "block";
 }
 function cerrarModalReporte() { document.getElementById("modalReporte").style.display = "none"; }
 
-// RESPUESTAS DE LOS BOTONES A LOS MODALES
 function cobrarTicketPerdido() { abrirModalTicketPerdido(); }
 
 function guardarTicketPerdido() {
@@ -122,7 +119,6 @@ function guardarTicketPerdido() {
     alert("Cobro registrado (Q25) - Ticket Impreso");
 }
 
-// 1. NOTIFICACIÓN VISUAL EN EL BOTÓN PARA EL USO DE BAÑO
 function cobrarBaño() {
     let registro = {
         placa: "USO DE BAÑO", 
@@ -135,21 +131,18 @@ function cobrarBaño() {
     historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
     
-    // Cambia el texto del botón dinámicamente como alerta visual rápida
     const btnBaño = document.querySelector("button[onclick='cobrarBaño()']");
     if(btnBaño) {
         const textoOriginal = btnBaño.innerHTML;
         btnBaño.innerHTML = "✅ ¡REGISTRADO Q3!";
         btnBaño.style.background = "#34c759";
         btnBaño.style.color = "#fff";
-        
         setTimeout(() => {
             btnBaño.innerHTML = textoOriginal;
             btnBaño.style.background = "";
             btnBaño.style.color = "";
         }, 2000);
     }
-    
     alert("Uso de baño registrado (Q3)");
 }
 
@@ -246,23 +239,16 @@ function toggleHistorial(){
     } else box.style.display = "none";
 }
 
-// 2. CORREGIDO: FILTRADO ABSOLUTO E INMEDIATO DEL TRABAJADOR SIN IMPORTAR MAYÚSCULAS
 function cerrarTurnoOperador(){
     const opActual = obtenerOperadorActual().trim().toUpperCase();
     if(confirm(`¿Cerrar turno de ${opActual}? Esto limpiará de forma definitiva sus registros de caja.`)){
-        
-        // Comparamos convirtiendo a mayúsculas estrictas para eliminar fallos de coincidencia
         historial = historial.filter(x => x.operador.trim().toUpperCase() !== opActual);
-        
         localStorage.setItem("historial", JSON.stringify(historial));
-        
-        // Forzamos el refresco del panel visual
         let box = document.getElementById("historialBox");
         if(box && box.style.display !== "none") {
             box.style.display = "none";
             toggleHistorial();
         }
-        
         alert(`Turno de ${opActual} finalizado y registros locales removidos.`);
     }
 }
@@ -293,18 +279,20 @@ function imprimirTicketSalida(h){
     }
 }
 
+// ==========================================================================
+// CONTROL DEL NUEVO SELECTOR PARA REPORTE GENERAL
+// ==========================================================================
 function generarReporteHTML() { abrirModalReporte(); }
 
-// 3. REPORTE FILTRADO PARA QUE CALCULE SOLO LO PERTENECIENTE A LA PERSONA QUE ESCRIBE SU NOMBRE
-function ejecutarReporteImpreso() {
+function procesarReporteAccion(modo) {
     let trabajador = document.getElementById("repTrabajador").value.trim().toUpperCase();
-    if (!trabajador) return alert("Por favor, escriba su nombre para generar el reporte");
+    if (!trabajador) return alert("Por favor, escriba el nombre del operador para procesar.");
     
-    // Filtramos los movimientos del historial que pertenezcan únicamente al nombre ingresado en el input
+    // Filtro estricto del turno del trabajador actual
     let historialDelTurno = historial.filter(x => x.operador.trim().toUpperCase() === trabajador);
     
     if (historialDelTurno.length === 0) {
-        alert(`No se encontraron movimientos registrados bajo el nombre "${trabajador}" en la sesión activa.`);
+        alert(`No hay registros activos para el operador: "${trabajador}".`);
         cerrarModalReporte();
         return;
     }
@@ -312,23 +300,100 @@ function ejecutarReporteImpreso() {
     let totalCaja = historialDelTurno.reduce((s, x) => s + x.precio, 0);
     let totalVehiculos = historialDelTurno.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, x) => s + x.precio, 0);
     let totalOtros = historialDelTurno.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, x) => s + x.precio, 0);
-    
     let fechaHoy = new Date().toLocaleDateString();
 
-    if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
-        let resumenTexto = `V: Q${totalVehiculos}.00 | OTROS: Q${totalOtros}.00`;
+    if (modo === "IMPRIMIR") {
+        // Enviar directo a la ticketera física del POS portátil
+        if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
+            let resumenTexto = `V: Q${totalVehiculos}.00 | OTROS: Q${totalOtros}.00`;
+            window.AndroidPrinter.ticketExtra("REPORTE DE TURNO", `Q${totalCaja}.00`, resumenTexto, fechaHoy, trabajador);
+            alert("Reporte enviado con éxito a la impresora térmica.");
+        } else {
+            alert(`[Modo PC] Reporte de ${trabajador} -> Total Caja: Q${totalCaja}.00`);
+        }
+        cerrarModalReporte();
         
-        window.AndroidPrinter.ticketExtra(
-            "REPORTE DE TURNO", 
-            `Q${totalCaja}.00`, 
-            resumenTexto, 
-            fechaHoy, 
-            trabajador
-        );
-        alert("Reporte de turno generado y enviado a la impresora.");
-    } else {
-        alert(`Modo PC - Turno [${trabajador}] -> Total: Q${totalCaja}.00 (Vehículos: Q${totalVehiculos}, Otros: Q${totalOtros})`);
+    } else if (modo === "DESCARGAR") {
+        // Generar un contenedor HTML limpio y renderizarlo a PNG digital descargable
+        let vehiculos = historialDelTurno.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL");
+        let otros = historialDelTurno.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL");
+
+        let targetDOM = document.createElement("div");
+        targetDOM.style.position = "fixed"; 
+        targetDOM.style.left = "-9999px";
+        targetDOM.style.width = "550px"; 
+        targetDOM.style.background = "#ffffff"; 
+        targetDOM.style.padding = "30px";
+
+        targetDOM.innerHTML = `
+            <div style="border: 2px solid #000; padding: 25px; font-family: Arial, sans-serif; color: #000000; background: #ffffff;">
+                <center>
+                    <h1 style="margin:0; font-size:26px; font-weight:bold;">TORRE GRANADOS</h1>
+                    <h2 style="margin:5px 0 20px 0; font-size:18px; font-weight:normal; letter-spacing:1px;">REPORTE DE TURNO ORIGINAL</h2>
+                </center>
+                <div style="display:flex; justify-content:space-between; margin-top:20px; font-size:13px;">
+                    <span><b>OPERADOR:</b> ${trabajador}</span>
+                    <span><b>FECHA:</b> ${fechaHoy}</span>
+                </div>
+                <hr style="border: 1px solid #000; margin: 15px 0;">
+                <h3 style="font-size:15px; margin: 10px 0;">DETALLE DE VEHÍCULOS</h3>
+                <table style="width:100%; font-size:12px; border-collapse:collapse; margin-bottom:15px;">
+                    <tr style="border-bottom:2px solid #000; text-align:left; font-weight:bold;">
+                        <th style="padding:4px;">Placa</th>
+                        <th>Tipo</th>
+                        <th style="text-align:right; padding:4px;">Monto</th>
+                    </tr>
+                    ${vehiculos.map(x => `
+                        <tr>
+                            <td style="padding:5px 4px; border-bottom:1px solid #eee;">${x.placa}</td>
+                            <td style="border-bottom:1px solid #eee;">${x.tipo}</td>
+                            <td style="text-align:right; padding:5px 4px; border-bottom:1px solid #eee;">Q${x.precio}.00</td>
+                        </tr>
+                    `).join('')}
+                </table>
+                
+                ${otros.length > 0 ? `
+                    <h3 style="font-size:15px; margin: 20px 0 10px 0;">OTROS SERVICIOS</h3>
+                    <table style="width:100%; font-size:12px; border-collapse:collapse; margin-bottom:15px;">
+                        <tr style="border-bottom:2px solid #000; text-align:left; font-weight:bold;">
+                            <th style="padding:4px;">Descripción</th>
+                            <th style="text-align:right; padding:4px;">Monto</th>
+                        </tr>
+                        ${otros.map(x => `
+                            <tr>
+                                <td style="padding:5px 4px; border-bottom:1px solid #eee;">${x.placa}</td>
+                                <td style="text-align:right; padding:5px 4px; border-bottom:1px solid #eee;">Q${x.precio}.00</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                ` : ''}
+                
+                <div style="margin-top:35px; border:2px solid #000; padding:15px; background:#fcfcfc;">
+                    <table style="width:100%; font-size:14px; border-collapse:collapse;">
+                        <tr><td style="padding:3px 0;">Total Vehículos:</td><td style="text-align:right;">Q${totalVehiculos}.00</td></tr>
+                        <tr><td style="padding:3px 0; border-bottom:1px solid #000;">Otros Servicios:</td><td style="text-align:right; border-bottom:1px solid #000;">Q${totalOtros}.00</td></tr>
+                        <tr style="font-size:18px; font-weight:bold;"><td style="padding:10px 0 0 0;">TOTAL RECAUDADO:</td><td style="text-align:right; padding:10px 0 0 0;">Q${totalCaja}.00</td></tr>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(targetDOM);
+
+        // Renderizado e inyección de descarga mediante html2canvas
+        setTimeout(() => {
+            html2canvas(targetDOM, {scale: 2, logging: false, useCORS: true}).then(canvas => {
+                let link = document.createElement("a");
+                link.download = `Reporte_${trabajador.replace(/\s+/g, '_')}_${fechaHoy.replace(/\//g, '-')}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                document.body.removeChild(targetDOM);
+                alert("Imagen PNG del reporte descargada con éxito.");
+                cerrarModalReporte();
+            }).catch(err => {
+                alert("Error generando archivo de imagen: " + err);
+                document.body.removeChild(targetDOM);
+            });
+        }, 300);
     }
-    
-    cerrarModalReporte();
 }

@@ -75,6 +75,11 @@
         </div>
     </div>
 
+    <!-- ========================================================================== -->
+    <!-- MODALES DE CONTROL -->
+    <!-- ========================================================================== -->
+
+    <!-- 1. MODAL MENSUALIDAD -->
     <div id="modalMensual" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333; background: rgba(20, 20, 20, 0.95);">
         <h3 class="title-ios-sub">Registrar Pago Mensual</h3>
         <div class="input-field">
@@ -91,6 +96,7 @@
         </div>
     </div>
 
+    <!-- 2. MODAL TICKET PERDIDO -->
     <div id="modalTicketPerdido" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333; background: rgba(20, 20, 20, 0.95);">
         <h3 class="title-ios-sub">Reposición Ticket Perdido</h3>
         <p style="color: #8e8e93; font-size: 14px; margin-bottom: 15px;">Ingrese la placa para realizar el cobro de Q25.00</p>
@@ -104,18 +110,32 @@
         </div>
     </div>
 
+    <!-- 3. MODAL REPORTE GENERAL -->
     <div id="modalReporte" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333; background: rgba(20, 20, 20, 0.95);">
         <h3 class="title-ios-sub">Cierre de Turno y Caja</h3>
-        <p style="color: #8e8e93; font-size: 14px; margin-bottom: 15px;">Coloque cualquier firma o nombre identificador para el reporte:</p>
-        <div class="input-field" style="margin-bottom: 10px;">
-            <label style="color:#fff;">Identificador / Nombre</label>
-            <input type="text" id="repTrabajador" placeholder="Nombre o Letras Libres" style="background:#fff; color:#000; text-transform: uppercase;">
+        <div class="input-field" style="margin-bottom: 10px; margin-top: 15px;">
+            <label style="color:#fff;">Nombre</label>
+            <input type="text" id="repTrabajador" placeholder="Nombre" style="background:#fff; color:#000; text-transform: uppercase;">
         </div>
         
         <div style="display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 15px;">
             <button class="ios-btn" style="background: #34c759; border-radius: 10px; margin: 0; padding: 12px;" onclick="procesarReporteAccion('IMPRIMIR')">🖨️ Imprimir Ticket Físico</button>
-            <button class="ios-btn" style="background: #007aff; border-radius: 10px; margin: 0; padding: 12px;" onclick="procesarReporteAccion('DESCARGAR')">🖼️ Descargar Imagen (PNG)</button>
+            <button class="ios-btn" style="background: #007aff; border-radius: 10px; margin: 0; padding: 12px;" onclick="procesarReporteAccion('DESCARGAR')">🖼️ Ver / Compartir Imagen</button>
             <button class="ios-btn-danger" style="background: #555; border-radius: 10px; margin: 5px 0 0 0; padding: 10px;" onclick="cerrarModalReporte()">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- 4. VISOR DE REPORTE CON BOTÓN DE ACCIÓN COMPARTIR/GUARDAR -->
+    <div id="modalVerImagen" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; overflow-y: auto; padding: 20px 10px; box-sizing: border-box; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background: #222; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <h4 style="color:#fff; font-family:sans-serif; margin-top:0; margin-bottom:15px;">Reporte Listo</h4>
+            
+            <div id="contenedorRenderImagen" style="background:#fff; padding:5px; border-radius:4px; display:inline-block; max-width:100%;"></div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 20px;">
+                <button id="btnCompartirNativo" class="ios-btn" style="background:#34c759; margin:0; padding:12px; border-radius:8px; font-weight:bold;">📲 ENVIAR O GUARDAR REPORTE</button>
+                <button class="ios-btn-danger" style="background:#555; margin:0; padding:10px; border-radius:8px;" onclick="cerrarModalVerImagen()">Volver</button>
+            </div>
         </div>
     </div>
 

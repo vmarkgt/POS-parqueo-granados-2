@@ -93,6 +93,8 @@ function abrirModalReporte() {
 }
 function cerrarModalReporte() { document.getElementById("modalReporte").style.display = "none"; }
 
+function cerrarModalVerImagen() { document.getElementById("modalVerImagen").style.display = "none"; }
+
 function cobrarTicketPerdido() { abrirModalTicketPerdido(); }
 
 function guardarTicketPerdido() {
@@ -222,14 +224,13 @@ function actualizarLista(){
 }
 
 // ==========================================================================
-// CIERRE DE TURNOS Y CAJA (CORREGIDO SIN CONFIRM PARA ANDROID)
+// CIERRE DE TURNOS Y CAJA
 // ==========================================================================
 function toggleHistorial(){
     let box = document.getElementById("historialBox");
     if(!box) return;
     if(box.style.display === "none") {
         box.style.display = "block";
-        // REMOVIDO: Ya no muestra la etiqueta de operador al lado del registro
         let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px; background:#fff; margin:2px 0;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
         if(obtenerRolActual() === "ADMIN") {
             html += `<button class="ios-btn-danger" style="width:100%; margin-top:10px;" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
@@ -240,14 +241,11 @@ function toggleHistorial(){
     } else box.style.display = "none";
 }
 
-// AHORA BORRA DE INMEDIATO (SIN VENTANAS DE CONFIRMACIÓN QUE SE TRABAN EN ANDROID)
 function cerrarTurnoOperador(){
-    historial = []; // Limpia por completo la caja activa local de la pantalla
+    historial = [];
     localStorage.setItem("historial", JSON.stringify(historial));
-    
     let box = document.getElementById("historialBox");
     if(box) box.innerHTML = "<div style='background:#fff; padding:10px;'>Sin movimientos en este turno</div>";
-    
     alert("Turno cerrado con éxito. Historial de caja reiniciado.");
 }
 
@@ -258,7 +256,7 @@ function borrarHistorialTotal(){
 }
 
 // ==========================================================================
-// IMPRESIÓN DIRECTA NATIVA (PUENTE ANDROID)
+// IMPRESIÓN DIRECTA NATIVA
 // ==========================================================================
 function imprimirTicketEntrada(v){
     const horaStr = v.horaEntrada.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -276,13 +274,13 @@ function imprimirTicketSalida(h){
 }
 
 // ==========================================================================
-// CONTROL DEL REPORTE GENERAL LIBRE (IMPRIME TODO LO QUE ESTÉ EN CAJA)
+// CONTROL DEL REPORTE GENERAL CON COMPARTIR INTEGRADO NATIVO
 // ==========================================================================
 function generarReporteHTML() { abrirModalReporte(); }
 
 function procesarReporteAccion(modo) {
     let trabajador = document.getElementById("repTrabajador").value.trim().toUpperCase();
-    if (!trabajador) trabajador = "TURNO ACTUAL"; // Si lo dejan en blanco, pone un texto por defecto
+    if (!trabajador) trabajador = "TURNO ACTUAL";
     
     if (historial.length === 0) {
         alert("No hay ningún registro activo en este turno para reportar.");
@@ -290,10 +288,9 @@ function procesarReporteAccion(modo) {
         return;
     }
     
-    // AHORA NO FILTRA: Toma todo el historial completo acumulado antes del cierre
     let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
-    let totalVehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, x) => s + x.precio, 0);
-    let totalOtros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, x) => s + x.precio, 0);
+    let totalVehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, s2) => s + s2.precio, 0);
+    let totalOtros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, s2) => s + s2.precio, 0);
     let fechaHoy = new Date().toLocaleDateString();
 
     if (modo === "IMPRIMIR") {
@@ -313,23 +310,23 @@ function procesarReporteAccion(modo) {
         let targetDOM = document.createElement("div");
         targetDOM.style.position = "fixed"; 
         targetDOM.style.left = "-9999px";
-        targetDOM.style.width = "550px"; 
+        targetDOM.style.width = "450px"; 
         targetDOM.style.background = "#ffffff"; 
-        targetDOM.style.padding = "30px";
+        targetDOM.style.padding = "20px";
 
         targetDOM.innerHTML = `
-            <div style="border: 2px solid #000; padding: 25px; font-family: Arial, sans-serif; color: #000000; background: #ffffff;">
+            <div style="border: 2px solid #000; padding: 15px; font-family: Arial, sans-serif; color: #000000; background: #ffffff;">
                 <center>
-                    <h1 style="margin:0; font-size:26px; font-weight:bold;">TORRE GRANADOS</h1>
-                    <h2 style="margin:5px 0 20px 0; font-size:18px; font-weight:normal; letter-spacing:1px;">REPORTE DE TURNO</h2>
+                    <h1 style="margin:0; font-size:22px; font-weight:bold;">TORRE GRANADOS</h1>
+                    <h2 style="margin:5px 0 15px 0; font-size:15px; font-weight:normal; letter-spacing:1px;">REPORTE DE TURNO</h2>
                 </center>
-                <div style="display:flex; justify-content:space-between; margin-top:20px; font-size:13px;">
+                <div style="display:flex; justify-content:space-between; margin-top:15px; font-size:12px;">
                     <span><b>ENCARGADO:</b> ${trabajador}</span>
                     <span><b>FECHA:</b> ${fechaHoy}</span>
                 </div>
-                <hr style="border: 1px solid #000; margin: 15px 0;">
-                <h3 style="font-size:15px; margin: 10px 0;">DETALLE DE VEHÍCULOS</h3>
-                <table style="width:100%; font-size:12px; border-collapse:collapse; margin-bottom:15px;">
+                <hr style="border: 1px solid #000; margin: 12px 0;">
+                <h3 style="font-size:13px; margin: 8px 0;">DETALLE DE VEHÍCULOS</h3>
+                <table style="width:100%; font-size:11px; border-collapse:collapse; margin-bottom:12px;">
                     <tr style="border-bottom:2px solid #000; text-align:left; font-weight:bold;">
                         <th style="padding:4px;">Placa</th>
                         <th>Tipo</th>
@@ -337,34 +334,34 @@ function procesarReporteAccion(modo) {
                     </tr>
                     ${vehiculos.map(x => `
                         <tr>
-                            <td style="padding:5px 4px; border-bottom:1px solid #eee;">${x.placa}</td>
+                            <td style="padding:4px; border-bottom:1px solid #eee;">${x.placa}</td>
                             <td style="border-bottom:1px solid #eee;">${x.tipo}</td>
-                            <td style="text-align:right; padding:5px 4px; border-bottom:1px solid #eee;">Q${x.precio}.00</td>
+                            <td style="text-align:right; padding:4px; border-bottom:1px solid #eee;">Q${x.precio}.00</td>
                         </tr>
                     `).join('')}
                 </table>
                 
                 ${otros.length > 0 ? `
-                    <h3 style="font-size:15px; margin: 20px 0 10px 0;">OTROS SERVICIOS</h3>
-                    <table style="width:100%; font-size:12px; border-collapse:collapse; margin-bottom:15px;">
+                    <h3 style="font-size:13px; margin: 15px 0 8px 0;">OTROS SERVICIOS</h3>
+                    <table style="width:100%; font-size:11px; border-collapse:collapse; margin-bottom:12px;">
                         <tr style="border-bottom:2px solid #000; text-align:left; font-weight:bold;">
                             <th style="padding:4px;">Descripción</th>
                             <th style="text-align:right; padding:4px;">Monto</th>
                         </tr>
                         ${otros.map(x => `
                             <tr>
-                                <td style="padding:5px 4px; border-bottom:1px solid #eee;">${x.placa}</td>
-                                <td style="text-align:right; padding:5px 4px; border-bottom:1px solid #eee;">Q${x.precio}.00</td>
+                                <td style="padding:4px; border-bottom:1px solid #eee;">${x.placa}</td>
+                                <td style="text-align:right; padding:4px; border-bottom:1px solid #eee;">Q${x.precio}.00</td>
                             </tr>
                         `).join('')}
                     </table>
                 ` : ''}
                 
-                <div style="margin-top:35px; border:2px solid #000; padding:15px; background:#fcfcfc;">
-                    <table style="width:100%; font-size:14px; border-collapse:collapse;">
-                        <tr><td style="padding:3px 0;">Total Vehículos:</td><td style="text-align:right;">Q${totalVehiculos}.00</td></tr>
-                        <tr><td style="padding:3px 0; border-bottom:1px solid #000;">Otros Servicios:</td><td style="text-align:right; border-bottom:1px solid #000;">Q${totalOtros}.00</td></tr>
-                        <tr style="font-size:18px; font-weight:bold;"><td style="padding:10px 0 0 0;">TOTAL RECAUDADO:</td><td style="text-align:right; padding:10px 0 0 0;">Q${totalCaja}.00</td></tr>
+                <div style="margin-top:20px; border:2px solid #000; padding:10px; background:#fcfcfc;">
+                    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                        <tr><td style="padding:2px 0;">Total Vehículos:</td><td style="text-align:right;">Q${totalVehiculos}.00</td></tr>
+                        <tr><td style="padding:2px 0; border-bottom:1px solid #000;">Otros Servicios:</td><td style="text-align:right; border-bottom:1px solid #000;">Q${totalOtros}.00</td></tr>
+                        <tr style="font-size:15px; font-weight:bold;"><td style="padding:6px 0 0 0;">TOTAL RECAUDADO:</td><td style="text-align:right; padding:6px 0 0 0;">Q${totalCaja}.00</td></tr>
                     </table>
                 </div>
             </div>
@@ -374,15 +371,48 @@ function procesarReporteAccion(modo) {
 
         setTimeout(() => {
             html2canvas(targetDOM, {scale: 2, logging: false, useCORS: true}).then(canvas => {
-                let link = document.createElement("a");
-                link.download = `Reporte_${trabajador.replace(/\s+/g, '_')}.png`;
-                link.href = canvas.toDataURL("image/png");
-                link.click();
-                document.body.removeChild(targetDOM);
-                alert("Imagen PNG descargada con éxito.");
+                let base64data = canvas.toDataURL("image/png");
+                
+                // Generar vista previa visual de la imagen en el modal
+                let imgElement = document.createElement("img");
+                imgElement.src = base64data;
+                imgElement.style.maxWidth = "100%";
+                imgElement.style.height = "auto";
+                
+                let contenedor = document.getElementById("contenedorRenderImagen");
+                contenedor.innerHTML = ""; 
+                contenedor.appendChild(imgElement);
+                
+                // Reconfigurar dinámicamente la acción del botón Verde para usar la API Nativa de Compartir
+                let btnCompartir = document.getElementById("btnCompartirNativo");
+                btnCompartir.onclick = async () => {
+                    try {
+                        // Convertir Base64 en un archivo binario temporal seguro para el OS
+                        const res = await fetch(base64data);
+                        const blob = await res.blob();
+                        const file = new File([blob], `Reporte_${trabajador.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
+                        
+                        // Llamar al menú nativo compartiendo el archivo de imagen
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: 'Reporte de Turno',
+                                text: `Cierre de caja Torre Granados - Responsable: ${trabajador}`
+                            });
+                        } else {
+                            alert("Esta función requiere Android actualizado o compatibilidad WebShare.");
+                        }
+                    } catch (e) {
+                        console.log("Error al compartir: ", e);
+                        alert("No se pudo ejecutar la acción de exportación: " + e.message);
+                    }
+                };
+
                 cerrarModalReporte();
+                document.getElementById("modalVerImagen").style.display = "block";
+                document.body.removeChild(targetDOM);
             }).catch(err => {
-                alert("Error generando archivo de imagen: " + err);
+                alert("Error generando vista: " + err);
                 document.body.removeChild(targetDOM);
             });
         }, 300);

@@ -1,5 +1,5 @@
 // ==========================================================================
-// CONFIGURACIÓN DE USUARIOS Y ACCESOS (ACTUALIZADO 2026)
+// CONFIGURACIÓN DE USUARIOS Y ACCESOS
 // ==========================================================================
 const usuariosSistemas = [
     {user: "admin", pass: "admin2026", rol: "ADMIN"},
@@ -66,36 +66,43 @@ function registrarEntrada(){
     actualizarLista();
 }
 
+// REGLA 1: COBRAR TICKET PERDIDO (SÍ IMPRIME - NATIVO)
 function cobrarTicketPerdido() {
     let placa = prompt("Ingrese la PLACA del vehículo:");
     if(!placa) return;
+    
     let registro = {
-        placa: "T. PERDIDO: " + placa.toUpperCase(), 
+        placa: "PLACA: " + placa.toUpperCase(), 
         tipo: "TICKET PERDIDO", 
         precio: 25, 
         fecha: new Date().toLocaleDateString(), 
         operador: usuarioActivo.user, 
         valorSello: 0
     };
+    
     historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
-    imprimirTicketServicioExtra(registro, "Q25.00");
-    alert("Cobro registrado (Q25)");
+    
+    // Ejecuta la impresión nativa heredada sin tocar layouts de Android
+    if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
+        window.AndroidPrinter.ticketExtra("REPOSICIÓN TICKET PERDIDO", "Q25.00", registro.placa, registro.fecha, registro.operador);
+    }
+    
+    alert("Cobro registrado e imprimiendo (Q25)");
 }
 
+// REGLA 2: COBRAR BAÑO (SOLO REGISTRA EN SILENCIO - NO IMPRIME)
 function cobrarBaño() {
-    let registro = {
+    historial.push({
         placa: "USO DE BAÑO", 
         tipo: "BAÑO", 
         precio: 3, 
         fecha: new Date().toLocaleDateString(), 
         operador: usuarioActivo.user, 
         valorSello: 0
-    };
-    historial.push(registro);
+    });
     localStorage.setItem("historial", JSON.stringify(historial));
-    imprimirTicketServicioExtra(registro, "Q3.00");
-    alert("Uso de baño registrado (Q3)");
+    alert("Uso de baño registrado en caja (Q3)");
 }
 
 function abrirModalMensual() { document.getElementById("modalMensual").style.display = "flex"; }
@@ -105,22 +112,23 @@ function guardarMensualidad() {
     const nombre = document.getElementById("mNombre").value;
     const costo = parseFloat(document.getElementById("mCosto").value);
     if(!nombre || !costo) return alert("Faltan datos");
-    let registro = {
-        placa: `EFECTIVO - MENSUAL: ${nombre.toUpperCase()}`, 
+    
+    historial.push({
+        placa: `MENSUAL: ${nombre.toUpperCase()}`, 
         tipo: "MENSUAL", 
         precio: costo, 
         fecha: new Date().toLocaleDateString(), 
         operador: usuarioActivo.user, 
         valorSello: 0
-    };
-    historial.push(registro);
+    });
     localStorage.setItem("historial", JSON.stringify(historial));
-    imprimirTicketServicioExtra(registro, `Q${costo}.00`);
     cerrarModalMensual();
     alert("Pago mensual guardado");
 }
 
-// LÓGICA DE SELLOS Y SALIDA CONTRA RELOJ
+// ==========================================================================
+// LÓGICA DE SELLOS Y SALIDA
+// ==========================================================================
 function agregarSello(index){
     activos[index].sellos += 1;
     let v = activos[index];
@@ -162,6 +170,7 @@ function darSalida(index){
 
 function actualizarLista(){
     let cont = document.getElementById("activeList");
+    if(!cont) return;
     cont.innerHTML = "";
     activos.forEach((v, i) => {
         let div = document.createElement("div"); div.className = "vehiculo-item";
@@ -175,10 +184,11 @@ function actualizarLista(){
 }
 
 // ==========================================================================
-// GESTIÓN DE TURNOS HISTÓRICOS
+// GESTIÓN DE HISTORIAL Y CIERRES DE TURNO
 // ==========================================================================
 function toggleHistorial(){
     let box = document.getElementById("historialBox");
+    if(!box) return;
     if(box.style.display === "none") {
         box.style.display = "block";
         let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
@@ -191,17 +201,19 @@ function toggleHistorial(){
     } else box.style.display = "none";
 }
 
+// REGLA 3: CIERRE DE TURNO FILTRADO (SOLO OPERADOR ACTUAL - ADMIN INTACTO)
 function cerrarTurnoOperador(){
-    if(confirm("¿Seguro que desea cerrar su turno? Esto limpiará su historial.")){
-        historial = [];
+    if(confirm("¿Seguro que desea cerrar su turno? Esto limpiará su historial de la sesión activa.")){
+        // Elimina únicamente los registros que pertenecen al operador logueado en este instante
+        historial = historial.filter(x => x.operador !== usuarioActivo.user);
         localStorage.setItem("historial", JSON.stringify(historial));
         toggleHistorial();
-        alert("Turno cerrado.");
+        alert("Turno finalizado. Historial del operador limpio.");
     }
 }
 
 function borrarHistorialTotal(){
-    if(confirm("¿BORRAR TODO EL HISTORIAL DEL SISTEMA?")){
+    if(confirm("¿BORRAR TODO EL HISTORIAL GENERAL DEL SISTEMA (ACCION ADMIN)?")){
         historial = [];
         localStorage.setItem("historial", JSON.stringify(historial));
         toggleHistorial();
@@ -209,17 +221,14 @@ function borrarHistorialTotal(){
 }
 
 // ==========================================================================
-// ENVÍO DE DATOS LIMPIOS AL PUENTE NATIVO (SIN INTERMEDIARIOS GRÁFICOS)
+// CONTROLADORES DE IMPRESIÓN DIRECTA DE DATOS (NATIVOS DE HARDWARE)
 // ==========================================================================
-
 function imprimirTicketEntrada(v){
     const horaStr = v.horaEntrada.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     const fechaStr = v.horaEntrada.toLocaleDateString();
 
     if (window.AndroidPrinter && window.AndroidPrinter.ticketEntrada) {
         window.AndroidPrinter.ticketEntrada(v.placa, horaStr, fechaStr);
-    } else {
-        window.print(); // Respaldo para navegadores genéricos
     }
 }
 
@@ -228,28 +237,90 @@ function imprimirTicketSalida(h){
 
     if (window.AndroidPrinter && window.AndroidPrinter.ticketSalida) {
         window.AndroidPrinter.ticketSalida(h.placa, visualPrecio, h.horaE, h.horaS, h.fecha);
-    } else {
-        window.print();
     }
 }
 
-function imprimirTicketServicioExtra(reg, totalTexto){
-    if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
-        window.AndroidPrinter.ticketExtra(reg.tipo, totalTexto, reg.placa, reg.fecha, reg.operador);
-    } else {
-        window.print();
-    }
-}
-
-// GENERACIÓN DE REPORTE FINAL LOCAL DE CONTROL ADMINISTRATIVO
+// REGLA 4: REPORTE GENERAL VISUAL (BAJA IMAGEN PNG A LA GALERÍA - NO ENVIAR A TICKET)
 function generarReporteHTML() {
     let trabajador = prompt("Nombre del trabajador:");
     if (!trabajador) return;
+    
     let vehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL");
     let otros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL");
     let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
     let totalSoloVehiculos = vehiculos.reduce((s, x) => s + x.precio, 0);
     let totalOtros = otros.reduce((s, x) => s + x.precio, 0);
 
-    alert(`REPORTE DE TURNO - ${trabajador.toUpperCase()}\n\nTotal Vehículos: Q${totalSoloVehiculos}.00\nOtros Servicios: Q${totalOtros}.00\nTOTAL EN CAJA: Q${totalCaja}.00`);
+    let reportContainer = document.createElement("div");
+    reportContainer.style.position = "fixed"; 
+    reportContainer.style.left = "-9999px";
+    reportContainer.style.width = "595px"; 
+    reportContainer.style.background = "white"; 
+    reportContainer.style.padding = "40px";
+
+    reportContainer.innerHTML = `
+        <div style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial; color: #000000;">
+            <center>
+                <h1 style="margin:0; font-size:28px;">TORRE GRANADOS</h1>
+                <h2 style="margin:5px 0 20px 0; font-size:20px; font-weight:normal;">REPORTE DE TURNO</h2>
+            </center>
+            <div style="display:flex; justify-content:space-between; margin-top:30px; font-size:14px;">
+                <span><b>OPERADOR:</b> ${trabajador.toUpperCase()}</span>
+                <span><b>FECHA:</b> ${new Date().toLocaleDateString()}</span>
+            </div>
+            <hr style="border: 1px solid #000; margin: 15px 0;">
+            <h3>DETALLE DE VEHÍCULOS</h3>
+            <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                <tr style="border-bottom:2px solid #000; text-align:left;">
+                    <th style="padding:5px;">Placa</th>
+                    <th>Tipo</th>
+                    <th style="text-align:right; padding:5px;">Monto</th>
+                </tr>
+                ${vehiculos.map(x => `
+                    <tr>
+                        <td style="padding:6px 5px; border-bottom:1px solid #ddd;">${x.placa}</td>
+                        <td style="border-bottom:1px solid #ddd;">${x.tipo}</td>
+                        <td style="text-align:right; padding:6px 5px; border-bottom:1px solid #ddd;">${x.precio > 0 ? 'Q'+x.precio+'.00' : 'Q0.00'}</td>
+                    </tr>
+                `).join('')}
+            </table>
+            
+            ${otros.length > 0 ? `
+                <h3 style="margin-top:30px;">OTROS SERVICIOS</h3>
+                <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                    <tr style="border-bottom:2px solid #000; text-align:left;">
+                        <th style="padding:5px;">Descripción</th>
+                        <th style="text-align:right; padding:5px;">Monto</th>
+                    </tr>
+                    ${otros.map(x => `
+                        <tr>
+                            <td style="padding:6px 5px; border-bottom:1px solid #ddd;">${x.placa}</td>
+                            <td style="text-align:right; padding:6px 5px; border-bottom:1px solid #ddd;">Q${x.precio}.00</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            ` : ''}
+            
+            <div style="margin-top:50px; border:2px solid #000; padding:20px; background:#f9f9f9;">
+                <table style="width:100%; font-size:16px; border-collapse:collapse;">
+                    <tr style="border-bottom:1px solid #ccc;"><td style="padding:4px 0;">Total Vehículos:</td><td style="text-align:right;">Q${totalSoloVehiculos}.00</td></tr>
+                    <tr style="border-bottom:1px solid #ccc;"><td style="padding:4px 0;">Otros Servicios:</td><td style="text-align:right;">Q${totalOtros}.00</td></tr>
+                    <tr style="font-size:22px; font-weight:bold;"><td style="padding:10px 0 0 0;">TOTAL EN CAJA:</td><td style="text-align:right; padding:10px 0 0 0;">Q${totalCaja}.00</td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(reportContainer);
+    
+    html2canvas(reportContainer, {scale: 2}).then(canvas => {
+        let link = document.createElement("a");
+        link.download = `Reporte_${trabajador.toUpperCase()}_${new Date().toISOString().slice(0,10)}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        document.body.removeChild(reportContainer);
+    }).catch(err => {
+        console.error("Error capturando reporte:", err);
+        document.body.removeChild(reportContainer);
+    });
 }

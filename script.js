@@ -222,14 +222,15 @@ function actualizarLista(){
 }
 
 // ==========================================================================
-// CIERRE DE TURNOS Y CAJA
+// CIERRE DE TURNOS Y CAJA (CORREGIDO SIN CONFIRM PARA ANDROID)
 // ==========================================================================
 function toggleHistorial(){
     let box = document.getElementById("historialBox");
     if(!box) return;
     if(box.style.display === "none") {
         box.style.display = "block";
-        let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px; background:#fff; margin:2px 0;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo}) <span style="font-size:10px; color:#666;">[${h.operador}]</span></div>`).join('');
+        // REMOVIDO: Ya no muestra la etiqueta de operador al lado del registro
+        let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px; background:#fff; margin:2px 0;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
         if(obtenerRolActual() === "ADMIN") {
             html += `<button class="ios-btn-danger" style="width:100%; margin-top:10px;" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
         } else {
@@ -239,26 +240,21 @@ function toggleHistorial(){
     } else box.style.display = "none";
 }
 
+// AHORA BORRA DE INMEDIATO (SIN VENTANAS DE CONFIRMACIÓN QUE SE TRABAN EN ANDROID)
 function cerrarTurnoOperador(){
-    const opActual = obtenerOperadorActual().trim().toUpperCase();
-    if(confirm(`¿Cerrar turno de ${opActual}? Esto limpiará de forma definitiva sus registros de caja.`)){
-        historial = historial.filter(x => x.operador.trim().toUpperCase() !== opActual);
-        localStorage.setItem("historial", JSON.stringify(historial));
-        let box = document.getElementById("historialBox");
-        if(box && box.style.display !== "none") {
-            box.style.display = "none";
-            toggleHistorial();
-        }
-        alert(`Turno de ${opActual} finalizado y registros locales removidos.`);
-    }
+    historial = []; // Limpia por completo la caja activa local de la pantalla
+    localStorage.setItem("historial", JSON.stringify(historial));
+    
+    let box = document.getElementById("historialBox");
+    if(box) box.innerHTML = "<div style='background:#fff; padding:10px;'>Sin movimientos en este turno</div>";
+    
+    alert("Turno cerrado con éxito. Historial de caja reiniciado.");
 }
 
 function borrarHistorialTotal(){
-    if(confirm("¿BORRAR TODO EL HISTORIAL GENERAL DEL SISTEMA (ACCION ADMIN)?")){
-        historial = [];
-        localStorage.setItem("historial", JSON.stringify(historial));
-        toggleHistorial();
-    }
+    historial = [];
+    localStorage.setItem("historial", JSON.stringify(historial));
+    toggleHistorial();
 }
 
 // ==========================================================================
@@ -280,43 +276,39 @@ function imprimirTicketSalida(h){
 }
 
 // ==========================================================================
-// CONTROL DEL NUEVO SELECTOR PARA REPORTE GENERAL
+// CONTROL DEL REPORTE GENERAL LIBRE (IMPRIME TODO LO QUE ESTÉ EN CAJA)
 // ==========================================================================
 function generarReporteHTML() { abrirModalReporte(); }
 
 function procesarReporteAccion(modo) {
     let trabajador = document.getElementById("repTrabajador").value.trim().toUpperCase();
-    if (!trabajador) return alert("Por favor, escriba el nombre del operador para procesar.");
+    if (!trabajador) trabajador = "TURNO ACTUAL"; // Si lo dejan en blanco, pone un texto por defecto
     
-    // Filtro estricto del turno del trabajador actual
-    let historialDelTurno = historial.filter(x => x.operador.trim().toUpperCase() === trabajador);
-    
-    if (historialDelTurno.length === 0) {
-        alert(`No hay registros activos para el operador: "${trabajador}".`);
+    if (historial.length === 0) {
+        alert("No hay ningún registro activo en este turno para reportar.");
         cerrarModalReporte();
         return;
     }
     
-    let totalCaja = historialDelTurno.reduce((s, x) => s + x.precio, 0);
-    let totalVehiculos = historialDelTurno.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, x) => s + x.precio, 0);
-    let totalOtros = historialDelTurno.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, x) => s + x.precio, 0);
+    // AHORA NO FILTRA: Toma todo el historial completo acumulado antes del cierre
+    let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
+    let totalVehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, x) => s + x.precio, 0);
+    let totalOtros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, x) => s + x.precio, 0);
     let fechaHoy = new Date().toLocaleDateString();
 
     if (modo === "IMPRIMIR") {
-        // Enviar directo a la ticketera física del POS portátil
         if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
             let resumenTexto = `V: Q${totalVehiculos}.00 | OTROS: Q${totalOtros}.00`;
             window.AndroidPrinter.ticketExtra("REPORTE DE TURNO", `Q${totalCaja}.00`, resumenTexto, fechaHoy, trabajador);
             alert("Reporte enviado con éxito a la impresora térmica.");
         } else {
-            alert(`[Modo PC] Reporte de ${trabajador} -> Total Caja: Q${totalCaja}.00`);
+            alert(`[Modo PC] Reporte -> Total Caja: Q${totalCaja}.00`);
         }
         cerrarModalReporte();
         
     } else if (modo === "DESCARGAR") {
-        // Generar un contenedor HTML limpio y renderizarlo a PNG digital descargable
-        let vehiculos = historialDelTurno.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL");
-        let otros = historialDelTurno.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL");
+        let vehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL");
+        let otros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL");
 
         let targetDOM = document.createElement("div");
         targetDOM.style.position = "fixed"; 
@@ -329,10 +321,10 @@ function procesarReporteAccion(modo) {
             <div style="border: 2px solid #000; padding: 25px; font-family: Arial, sans-serif; color: #000000; background: #ffffff;">
                 <center>
                     <h1 style="margin:0; font-size:26px; font-weight:bold;">TORRE GRANADOS</h1>
-                    <h2 style="margin:5px 0 20px 0; font-size:18px; font-weight:normal; letter-spacing:1px;">REPORTE DE TURNO ORIGINAL</h2>
+                    <h2 style="margin:5px 0 20px 0; font-size:18px; font-weight:normal; letter-spacing:1px;">REPORTE DE TURNO</h2>
                 </center>
                 <div style="display:flex; justify-content:space-between; margin-top:20px; font-size:13px;">
-                    <span><b>OPERADOR:</b> ${trabajador}</span>
+                    <span><b>ENCARGADO:</b> ${trabajador}</span>
                     <span><b>FECHA:</b> ${fechaHoy}</span>
                 </div>
                 <hr style="border: 1px solid #000; margin: 15px 0;">
@@ -380,15 +372,14 @@ function procesarReporteAccion(modo) {
 
         document.body.appendChild(targetDOM);
 
-        // Renderizado e inyección de descarga mediante html2canvas
         setTimeout(() => {
             html2canvas(targetDOM, {scale: 2, logging: false, useCORS: true}).then(canvas => {
                 let link = document.createElement("a");
-                link.download = `Reporte_${trabajador.replace(/\s+/g, '_')}_${fechaHoy.replace(/\//g, '-')}.png`;
+                link.download = `Reporte_${trabajador.replace(/\s+/g, '_')}.png`;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
                 document.body.removeChild(targetDOM);
-                alert("Imagen PNG del reporte descargada con éxito.");
+                alert("Imagen PNG descargada con éxito.");
                 cerrarModalReporte();
             }).catch(err => {
                 alert("Error generando archivo de imagen: " + err);

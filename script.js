@@ -28,12 +28,8 @@ setInterval(() => {
     if(!relojCont) return;
     const ahora = new Date();
     relojCont.innerText = ahora.toLocaleTimeString();
-    document.getElementById('fecha').innerText = SecurityDateString(ahora);
+    document.getElementById('fecha').innerText = ahora.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }, 1000);
-
-function SecurityDateString(dateObj) {
-    return dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-}
 
 // FUNCIÓN DE ACCESO
 function login(){
@@ -46,6 +42,10 @@ function login(){
         if(rem) localStorage.setItem("rememberedUser", u);
         else localStorage.removeItem("rememberedUser");
         usuarioActivo = encontrado;
+        
+        // Guardamos el usuario activo en localStorage como respaldo de seguridad
+        localStorage.setItem("usuarioLogueadoGenerico", JSON.stringify(encontrado));
+        
         document.getElementById("loginCard").style.display = "none";
         document.getElementById("appCard").style.display = "block";
         document.getElementById("userDisplay").innerHTML = `👤 ${usuarioActivo.rol}: ${usuarioActivo.user.toUpperCase()}`;
@@ -55,6 +55,27 @@ function login(){
     }
 }
 
+// OBTENER OPERADOR SEGURO (EVITA ERRORES DE VARIABLE INDEFINIDA)
+function obtenerOperadorActual() {
+    if (usuarioActivo && usuarioActivo.user) return usuarioActivo.user;
+    const respaldo = localStorage.getItem("usuarioLogueadoGenerico");
+    if (respaldo) {
+        const userObj = JSON.parse(respaldo);
+        return userObj.user;
+    }
+    return "torregranados"; // Usuario por defecto si todo falla
+}
+
+function obtenerRolActual() {
+    if (usuarioActivo && usuarioActivo.rol) return usuarioActivo.rol;
+    const respaldo = localStorage.getItem("usuarioLogueadoGenerico");
+    if (respaldo) {
+        const userObj = JSON.parse(respaldo);
+        return userObj.role || userObj.rol;
+    }
+    return "OPERADOR";
+}
+
 // ==========================================================================
 // REGISTRO DE MOVIMIENTOS (ENTRADAS Y COBROS)
 // ==========================================================================
@@ -62,7 +83,7 @@ function registrarEntrada(){
     let input = document.getElementById("plateInput");
     let placa = input.value.trim().toUpperCase();
     if(!placa) return;
-    let v = {placa, horaEntrada: new Date(), user: usuarioActivo.user, sellos: 0};
+    let v = {placa, horaEntrada: new Date(), user: obtenerOperadorActual(), sellos: 0};
     activos.push(v);
     localStorage.setItem("activos", JSON.stringify(activos));
     imprimirTicketEntrada(v);
@@ -70,7 +91,7 @@ function registrarEntrada(){
     actualizarLista();
 }
 
-// 1. TICKET PERDIDO: IMPRIME NATIVO Y SICE "REPOSICIÓN TICKET PERDIDO"
+// 1. TICKET PERDIDO (IMPRIME NATIVO)
 function cobrarTicketPerdido() {
     let placa = prompt("Ingrese la PLACA del vehículo:");
     if(!placa) return;
@@ -80,35 +101,33 @@ function cobrarTicketPerdido() {
         tipo: "TICKET PERDIDO", 
         precio: 25, 
         fecha: new Date().toLocaleDateString(), 
-        operador: usuarioActivo.user, 
+        operador: obtenerOperadorActual(), 
         valorSello: 0
     };
     
     historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
     
-    // Mandamos al canvas nativo el título exacto solicitado
     if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
         window.AndroidPrinter.ticketExtra("REPOSICIÓN TICKET PERDIDO", "Q25.00", "PLACA: " + registro.placa, registro.fecha, registro.operador);
     }
     
-    alert("Cobro registrado (Q25) - Ticket impreso");
+    alert("Cobro registrado (Q25) - Ticket enviado a impresión");
 }
 
-// 2. USO DE BAÑO: SOLO REGISTRA EN SILENCIO (NO IMPRIME NADA)
+// 2. USO DE BAÑO (SOLO REGISTRA EN SILENCIO)
 function cobrarBaño() {
     let registro = {
         placa: "USO DE BAÑO", 
         tipo: "BAÑO", 
         precio: 3, 
         fecha: new Date().toLocaleDateString(), 
-        operador: usuarioActivo.user, 
+        operador: obtenerOperadorActual(), 
         valorSello: 0
     };
     
     historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
-    
     alert("Uso de baño registrado en caja (Q3)");
 }
 
@@ -125,7 +144,7 @@ function guardarMensualidad() {
         tipo: "MENSUAL", 
         precio: costo, 
         fecha: new Date().toLocaleDateString(), 
-        operador: usuarioActivo.user, 
+        operador: obtenerOperadorActual(), 
         valorSello: 0
     });
     localStorage.setItem("historial", JSON.stringify(historial));
@@ -164,7 +183,7 @@ function darSalida(index){
         sellos: v.sellos,
         valorSello: (v.sellos > 0) ? valSelloTotal - precio : 0,
         precio: precio,
-        operador: usuarioActivo.user
+        operador: obtenerOperadorActual()
     };
 
     historial.push(registro);
@@ -199,7 +218,7 @@ function toggleHistorial(){
     if(box.style.display === "none") {
         box.style.display = "block";
         let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
-        if(usuarioActivo.rol === "ADMIN") {
+        if(obtenerRolActual() === "ADMIN") {
             html += `<button class="ios-btn-danger" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
         } else {
             html += `<button class="ios-btn-danger" style="background:#ff9500;" onclick="cerrarTurnoOperador()">CERRAR TURNO (BORRAR MI HISTORIAL)</button>`;
@@ -208,14 +227,15 @@ function toggleHistorial(){
     } else box.style.display = "none";
 }
 
-// 3. CERRAR TURNO FILTRADO: BORRA AL OPERADOR PERO DEJA AL ADMIN INTACTO
+// 3. CERRAR TURNO FILTRADO (SOLO BORRA OPERADOR ACTUAL ACTIVAMENTE)
 function cerrarTurnoOperador(){
-    if(confirm("¿Seguro que desea cerrar su turno? Esto limpiará su historial de la sesión activa.")){
-        // Elimina únicamente los movimientos hechos por el operador actual
-        historial = historial.filter(x => x.operador !== usuarioActivo.user);
+    const opActual = obtenerOperadorActual();
+    if(confirm(`¿Seguro que desea cerrar el turno de ${opActual.toUpperCase()}? Esto limpiará únicamente sus registros de caja.`)){
+        // Filtramos para conservar todo lo que NO sea de este operador
+        historial = historial.filter(x => x.operador !== opActual);
         localStorage.setItem("historial", JSON.stringify(historial));
         toggleHistorial();
-        alert("Turno finalizado. Su historial local se ha limpiado.");
+        alert("Turno finalizado con éxito. Historial de operador limpiado.");
     }
 }
 
@@ -228,12 +248,11 @@ function borrarHistorialTotal(){
 }
 
 // ==========================================================================
-// CONTROLADORES DE IMPRESIÓN DIRECTA DE DATOS (NATIVOS DE HARDWARE)
+// CONTROLADORES DE IMPRESIÓN DIRECTA NATIVA
 // ==========================================================================
 function imprimirTicketEntrada(v){
     const horaStr = v.horaEntrada.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     const fechaStr = v.horaEntrada.toLocaleDateString();
-
     if (window.AndroidPrinter && window.AndroidPrinter.ticketEntrada) {
         window.AndroidPrinter.ticketEntrada(v.placa, horaStr, fechaStr);
     }
@@ -241,16 +260,21 @@ function imprimirTicketEntrada(v){
 
 function imprimirTicketSalida(h){
     const visualPrecio = h.precio > 0 ? `Q${h.precio}.00` : `Q0.00`;
-
     if (window.AndroidPrinter && window.AndroidPrinter.ticketSalida) {
         window.AndroidPrinter.ticketSalida(h.placa, visualPrecio, h.horaE, h.horaS, h.fecha);
     }
 }
 
-// 4. REPORTE GENERAL EN IMAGEN: GENERA PNG Y DESCARGA (NO SE IMPRIME)
+// 4. REPORTE GENERAL EN IMAGEN PNG (BLINDADO CON TRY/CATCH)
 function generarReporteHTML() {
     let trabajador = prompt("Nombre del trabajador:");
     if (!trabajador) return;
+    
+    // Verificación de la librería html2canvas
+    if (typeof html2canvas === "undefined") {
+        alert("Error crítico: Falta agregar la librería html2canvas en el index.html. No se puede generar la imagen.");
+        return;
+    }
     
     let vehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL");
     let otros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL");
@@ -266,7 +290,7 @@ function generarReporteHTML() {
     reportContainer.style.padding = "40px";
 
     reportContainer.innerHTML = `
-        <div style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial; color: #000000;">
+        <div id="captureAreaHTML" style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial; color: #000000; background: white;">
             <center>
                 <h1 style="margin:0; font-size:28px;">TORRE GRANADOS</h1>
                 <h2 style="margin:5px 0 20px 0; font-size:20px; font-weight:normal;">REPORTE DE TURNO</h2>
@@ -320,15 +344,18 @@ function generarReporteHTML() {
 
     document.body.appendChild(reportContainer);
     
-    // Generamos la captura limpia a imagen usando html2canvas
-    html2canvas(reportContainer, {scale: 2}).then(canvas => {
-        let link = document.createElement("a");
-        link.download = `Reporte_${trabajador.toUpperCase()}_${new Date().toISOString().slice(0,10)}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-        document.body.removeChild(reportContainer);
-    }).catch(err => {
-        console.error("Error capturando reporte:", err);
-        document.body.removeChild(reportContainer);
-    });
+    // Agregamos un leve delay para asegurar renderizado correcto antes del screenshot
+    setTimeout(() => {
+        html2canvas(reportContainer, {scale: 2, useCORS: true, allowTaint: true}).then(canvas => {
+            let link = document.createElement("a");
+            link.download = `Reporte_${trabajador.toUpperCase()}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+            document.body.removeChild(reportContainer);
+            alert("Reporte guardado en descargas.");
+        }).catch(err => {
+            alert("Error al procesar la imagen: " + err);
+            document.body.removeChild(reportContainer);
+        });
+    }, 500);
 }

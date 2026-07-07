@@ -8,7 +8,6 @@ const usuariosSistemas = [
 
 let usuarioActivo = null;
 
-// CARGA INICIAL Y PERSISTENCIA DE LOGIN
 window.onload = () => {
     const savedUser = localStorage.getItem("rememberedUser");
     if(savedUser) {
@@ -17,12 +16,10 @@ window.onload = () => {
     }
 };
 
-// DATOS DE VEHÍCULOS Y MOVIMIENTOS
 let activos = JSON.parse(localStorage.getItem("activos")) || [];
 activos = activos.map(v => ({...v, horaEntrada: new Date(v.horaEntrada), sellos: v.sellos || 0}));
 let historial = JSON.parse(localStorage.getItem("historial")) || [];
 
-// RELOJ EN TIEMPO REAL
 setInterval(() => {
     const relojCont = document.getElementById('reloj');
     if(!relojCont) return;
@@ -31,7 +28,6 @@ setInterval(() => {
     document.getElementById('fecha').innerText = ahora.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }, 1000);
 
-// FUNCIÓN DE ACCESO
 function login(){
     const u = document.getElementById("loginUser").value.trim();
     const p = document.getElementById("loginPass").value.trim();
@@ -42,8 +38,6 @@ function login(){
         if(rem) localStorage.setItem("rememberedUser", u);
         else localStorage.removeItem("rememberedUser");
         usuarioActivo = encontrado;
-        
-        // Guardamos el usuario activo en localStorage como respaldo de seguridad
         localStorage.setItem("usuarioLogueadoGenerico", JSON.stringify(encontrado));
         
         document.getElementById("loginCard").style.display = "none";
@@ -55,29 +49,22 @@ function login(){
     }
 }
 
-// OBTENER OPERADOR SEGURO (EVITA ERRORES DE VARIABLE INDEFINIDA)
 function obtenerOperadorActual() {
     if (usuarioActivo && usuarioActivo.user) return usuarioActivo.user;
     const respaldo = localStorage.getItem("usuarioLogueadoGenerico");
-    if (respaldo) {
-        const userObj = JSON.parse(respaldo);
-        return userObj.user;
-    }
-    return "torregranados"; // Usuario por defecto si todo falla
+    if (respaldo) return JSON.parse(respaldo).user;
+    return "torregranados";
 }
 
 function obtenerRolActual() {
     if (usuarioActivo && usuarioActivo.rol) return usuarioActivo.rol;
     const respaldo = localStorage.getItem("usuarioLogueadoGenerico");
-    if (respaldo) {
-        const userObj = JSON.parse(respaldo);
-        return userObj.role || userObj.rol;
-    }
+    if (respaldo) return JSON.parse(respaldo).rol;
     return "OPERADOR";
 }
 
 // ==========================================================================
-// REGISTRO DE MOVIMIENTOS (ENTRADAS Y COBROS)
+// REGISTRO DE MOVIMIENTOS
 // ==========================================================================
 function registrarEntrada(){
     let input = document.getElementById("plateInput");
@@ -91,13 +78,31 @@ function registrarEntrada(){
     actualizarLista();
 }
 
-// 1. TICKET PERDIDO (IMPRIME NATIVO)
-function cobrarTicketPerdido() {
-    let placa = prompt("Ingrese la PLACA del vehículo:");
-    if(!placa) return;
+// CONTROL DE MODALES INTERNOS
+function abrirModalMensual() { document.getElementById("modalMensual").style.display = "block"; }
+function cerrarModalMensual() { document.getElementById("modalMensual").style.display = "none"; }
+
+function abrirModalTicketPerdido() { 
+    document.getElementById("tpPlaca").value = "";
+    document.getElementById("modalTicketPerdido").style.display = "block"; 
+}
+function cerrarModalTicketPerdido() { document.getElementById("modalTicketPerdido").style.display = "none"; }
+
+function abrirModalReporte() {
+    document.getElementById("repTrabajador").value = obtenerOperadorActual().toUpperCase();
+    document.getElementById("modalReporte").style.display = "block";
+}
+function cerrarModalReporte() { document.getElementById("modalReporte").style.display = "none"; }
+
+// RESPUESTAS DE LOS BOTONES A LOS MODALES
+function cobrarTicketPerdido() { abrirModalTicketPerdido(); }
+
+function guardarTicketPerdido() {
+    let placa = document.getElementById("tpPlaca").value.trim().toUpperCase();
+    if(!placa) return alert("Ingrese la placa del vehículo");
     
     let registro = {
-        placa: placa.toUpperCase(), 
+        placa: placa, 
         tipo: "TICKET PERDIDO", 
         precio: 25, 
         fecha: new Date().toLocaleDateString(), 
@@ -112,10 +117,10 @@ function cobrarTicketPerdido() {
         window.AndroidPrinter.ticketExtra("REPOSICIÓN TICKET PERDIDO", "Q25.00", "PLACA: " + registro.placa, registro.fecha, registro.operador);
     }
     
-    alert("Cobro registrado (Q25) - Ticket enviado a impresión");
+    cerrarModalTicketPerdido();
+    alert("Cobro registrado (Q25) - Ticket Impreso");
 }
 
-// 2. USO DE BAÑO (SOLO REGISTRA EN SILENCIO)
 function cobrarBaño() {
     let registro = {
         placa: "USO DE BAÑO", 
@@ -125,17 +130,13 @@ function cobrarBaño() {
         operador: obtenerOperadorActual(), 
         valorSello: 0
     };
-    
     historial.push(registro);
     localStorage.setItem("historial", JSON.stringify(historial));
-    alert("Uso de baño registrado en caja (Q3)");
+    alert("Uso de baño registrado (Q3)");
 }
 
-function abrirModalMensual() { document.getElementById("modalMensual").style.display = "flex"; }
-function cerrarModalMensual() { document.getElementById("modalMensual").style.display = "none"; }
-
 function guardarMensualidad() {
-    const nombre = document.getElementById("mNombre").value;
+    const nombre = document.getElementById("mNombre").value.trim();
     const costo = parseFloat(document.getElementById("mCosto").value);
     if(!nombre || !costo) return alert("Faltan datos");
     
@@ -153,7 +154,7 @@ function guardarMensualidad() {
 }
 
 // ==========================================================================
-// LÓGICA DE SELLOS Y SALIDA
+// SALIDAS Y RECAUDACIÓN
 // ==========================================================================
 function agregarSello(index){
     activos[index].sellos += 1;
@@ -210,32 +211,30 @@ function actualizarLista(){
 }
 
 // ==========================================================================
-// GESTIÓN DE HISTORIAL Y CIERRES DE TURNO
+// CIERRE DE TURNOS Y CAJA
 // ==========================================================================
 function toggleHistorial(){
     let box = document.getElementById("historialBox");
     if(!box) return;
     if(box.style.display === "none") {
         box.style.display = "block";
-        let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
+        let html = historial.slice().reverse().map(h => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:12px; background:#fff; margin:2px 0;"><b>${h.placa}</b> - Q${h.precio} (${h.tipo})</div>`).join('');
         if(obtenerRolActual() === "ADMIN") {
-            html += `<button class="ios-btn-danger" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
+            html += `<button class="ios-btn-danger" style="width:100%; margin-top:10px;" onclick="borrarHistorialTotal()">BORRAR TODO (ADMIN)</button>`;
         } else {
-            html += `<button class="ios-btn-danger" style="background:#ff9500;" onclick="cerrarTurnoOperador()">CERRAR TURNO (BORRAR MI HISTORIAL)</button>`;
+            html += `<button class="ios-btn-danger" style="background:#ff9500; width:100%; margin-top:10px;" onclick="cerrarTurnoOperador()">CERRAR TURNO (BORRAR MI HISTORIAL)</button>`;
         }
-        box.innerHTML = html || "Sin movimientos en este turno";
+        box.innerHTML = html || "<div style='background:#fff; padding:10px;'>Sin movimientos en este turno</div>";
     } else box.style.display = "none";
 }
 
-// 3. CERRAR TURNO FILTRADO (SOLO BORRA OPERADOR ACTUAL ACTIVAMENTE)
 function cerrarTurnoOperador(){
     const opActual = obtenerOperadorActual();
-    if(confirm(`¿Seguro que desea cerrar el turno de ${opActual.toUpperCase()}? Esto limpiará únicamente sus registros de caja.`)){
-        // Filtramos para conservar todo lo que NO sea de este operador
+    if(confirm(`¿Cerrar turno de ${opActual.toUpperCase()}? Limpiará su historial local.`)){
         historial = historial.filter(x => x.operador !== opActual);
         localStorage.setItem("historial", JSON.stringify(historial));
         toggleHistorial();
-        alert("Turno finalizado con éxito. Historial de operador limpiado.");
+        alert("Turno finalizado.");
     }
 }
 
@@ -248,7 +247,7 @@ function borrarHistorialTotal(){
 }
 
 // ==========================================================================
-// CONTROLADORES DE IMPRESIÓN DIRECTA NATIVA
+// IMPRESIÓN DIRECTA NATIVA (PUENTE ANDROID)
 // ==========================================================================
 function imprimirTicketEntrada(v){
     const horaStr = v.horaEntrada.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -265,97 +264,33 @@ function imprimirTicketSalida(h){
     }
 }
 
-// 4. REPORTE GENERAL EN IMAGEN PNG (BLINDADO CON TRY/CATCH)
-function generarReporteHTML() {
-    let trabajador = prompt("Nombre del trabajador:");
-    if (!trabajador) return;
+function generarReporteHTML() { abrirModalReporte(); }
+
+function ejecutarReporteImpreso() {
+    let trabajador = document.getElementById("repTrabajador").value.trim().toUpperCase();
+    if (!trabajador) return alert("Ingrese el nombre del operador");
     
-    // Verificación de la librería html2canvas
-    if (typeof html2canvas === "undefined") {
-        alert("Error crítico: Falta agregar la librería html2canvas en el index.html. No se puede generar la imagen.");
-        return;
+    let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
+    let fechaHoy = new Date().toLocaleDateString();
+
+    if (window.AndroidPrinter && window.AndroidPrinter.ticketExtra) {
+        // En lugar de intentar descargar archivos, mandamos los datos agrupados de caja al hardware de impresión
+        let totalVehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL").reduce((s, x) => s + x.precio, 0);
+        let totalOtros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL").reduce((s, x) => s + x.precio, 0);
+        
+        let resumenTexto = `V: Q${totalVehiculos}.00 | OTROS: Q${totalOtros}.00`;
+        
+        window.AndroidPrinter.ticketExtra(
+            "REPORTE DE TURNO", 
+            `Q${totalCaja}.00`, 
+            resumenTexto, 
+            fechaHoy, 
+            trabajador
+        );
+        alert("Reporte enviado con éxito a la ticketera física.");
+    } else {
+        alert(`Modo PC - Total en Caja: Q${totalCaja}.00`);
     }
     
-    let vehiculos = historial.filter(x => x.tipo === "EFECTIVO" || x.tipo === "SELLO TOTAL");
-    let otros = historial.filter(x => x.tipo === "BAÑO" || x.tipo === "TICKET PERDIDO" || x.tipo === "MENSUAL");
-    let totalCaja = historial.reduce((s, x) => s + x.precio, 0);
-    let totalSoloVehiculos = vehiculos.reduce((s, x) => s + x.precio, 0);
-    let totalOtros = otros.reduce((s, x) => s + x.precio, 0);
-
-    let reportContainer = document.createElement("div");
-    reportContainer.style.position = "fixed"; 
-    reportContainer.style.left = "-9999px";
-    reportContainer.style.width = "595px"; 
-    reportContainer.style.background = "white"; 
-    reportContainer.style.padding = "40px";
-
-    reportContainer.innerHTML = `
-        <div id="captureAreaHTML" style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial; color: #000000; background: white;">
-            <center>
-                <h1 style="margin:0; font-size:28px;">TORRE GRANADOS</h1>
-                <h2 style="margin:5px 0 20px 0; font-size:20px; font-weight:normal;">REPORTE DE TURNO</h2>
-            </center>
-            <div style="display:flex; justify-content:space-between; margin-top:30px; font-size:14px;">
-                <span><b>OPERADOR:</b> ${trabajador.toUpperCase()}</span>
-                <span><b>FECHA:</b> ${new Date().toLocaleDateString()}</span>
-            </div>
-            <hr style="border: 1px solid #000; margin: 15px 0;">
-            <h3>DETALLE DE VEHÍCULOS</h3>
-            <table style="width:100%; font-size:12px; border-collapse:collapse;">
-                <tr style="border-bottom:2px solid #000; text-align:left;">
-                    <th style="padding:5px;">Placa</th>
-                    <th>Tipo</th>
-                    <th style="text-align:right; padding:5px;">Monto</th>
-                </tr>
-                ${vehiculos.map(x => `
-                    <tr>
-                        <td style="padding:6px 5px; border-bottom:1px solid #ddd;">${x.placa}</td>
-                        <td style="border-bottom:1px solid #ddd;">${x.tipo}</td>
-                        <td style="text-align:right; padding:6px 5px; border-bottom:1px solid #ddd;">${x.precio > 0 ? 'Q'+x.precio+'.00' : 'Q0.00'}</td>
-                    </tr>
-                `).join('')}
-            </table>
-            
-            ${otros.length > 0 ? `
-                <h3 style="margin-top:30px;">OTROS SERVICIOS</h3>
-                <table style="width:100%; font-size:12px; border-collapse:collapse;">
-                    <tr style="border-bottom:2px solid #000; text-align:left;">
-                        <th style="padding:5px;">Descripción</th>
-                        <th style="text-align:right; padding:5px;">Monto</th>
-                    </tr>
-                    ${otros.map(x => `
-                        <tr>
-                            <td style="padding:6px 5px; border-bottom:1px solid #ddd;">${x.placa}</td>
-                            <td style="text-align:right; padding:6px 5px; border-bottom:1px solid #ddd;">Q${x.precio}.00</td>
-                        </tr>
-                    `).join('')}
-                </table>
-            ` : ''}
-            
-            <div style="margin-top:50px; border:2px solid #000; padding:20px; background:#f9f9f9;">
-                <table style="width:100%; font-size:16px; border-collapse:collapse;">
-                    <tr style="border-bottom:1px solid #ccc;"><td style="padding:4px 0;">Total Vehículos:</td><td style="text-align:right;">Q${totalSoloVehiculos}.00</td></tr>
-                    <tr style="border-bottom:1px solid #ccc;"><td style="padding:4px 0;">Otros Servicios:</td><td style="text-align:right;">Q${totalOtros}.00</td></tr>
-                    <tr style="font-size:22px; font-weight:bold;"><td style="padding:10px 0 0 0;">TOTAL EN CAJA:</td><td style="text-align:right; padding:10px 0 0 0;">Q${totalCaja}.00</td></tr>
-                </table>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(reportContainer);
-    
-    // Agregamos un leve delay para asegurar renderizado correcto antes del screenshot
-    setTimeout(() => {
-        html2canvas(reportContainer, {scale: 2, useCORS: true, allowTaint: true}).then(canvas => {
-            let link = document.createElement("a");
-            link.download = `Reporte_${trabajador.toUpperCase()}.png`;
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-            document.body.removeChild(reportContainer);
-            alert("Reporte guardado en descargas.");
-        }).catch(err => {
-            alert("Error al procesar la imagen: " + err);
-            document.body.removeChild(reportContainer);
-        });
-    }, 500);
+    cerrarModalReporte();
 }

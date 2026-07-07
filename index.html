@@ -51,8 +51,7 @@
 
         <div class="card">
             <h3 class="title-ios-green">Vehículos en el Parqueo</h3>
-            <div id="activeList">
-                </div>
+            <div id="activeList"></div>
         </div>
 
         <div class="card center-content">
@@ -76,7 +75,7 @@
         </div>
     </div>
 
-    <div id="modalMensual" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333;">
+    <div id="modalMensual" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333; background: rgba(20, 20, 20, 0.95);">
         <h3 class="title-ios-sub">Registrar Pago Mensual</h3>
         <div class="input-field">
             <label style="color:#fff;">Nombre del Cliente</label>
@@ -89,6 +88,32 @@
         <div class="button-row" style="margin-top:20px;">
             <button class="ios-btn-danger" style="background:#555; margin:0;" onclick="cerrarModalMensual()">Cancelar</button>
             <button class="ios-btn" style="flex:1; border-radius:10px;" onclick="guardarMensualidad()">Guardar</button>
+        </div>
+    </div>
+
+    <div id="modalTicketPerdido" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333; background: rgba(20, 20, 20, 0.95);">
+        <h3 class="title-ios-sub">Reposición Ticket Perdido</h3>
+        <p style="color: #8e8e93; font-size: 14px; margin-bottom: 15px;">Ingrese la placa para realizar el cobro de Q25.00</p>
+        <div class="input-field">
+            <label style="color:#fff;">Número de Placa</label>
+            <input type="text" id="tpPlaca" placeholder="M000XXX o P000XXX" style="background:#fff; color:#000; text-transform: uppercase;">
+        </div>
+        <div class="button-row" style="margin-top:20px;">
+            <button class="ios-btn-danger" style="background:#555; margin:0;" onclick="cerrarModalTicketPerdido()">Cancelar</button>
+            <button class="ios-btn" style="flex:1; border-radius:10px; background:#ff9500;" onclick="guardarTicketPerdido()">Cobrar Q25</button>
+        </div>
+    </div>
+
+    <div id="modalReporte" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333; background: rgba(20, 20, 20, 0.95);">
+        <h3 class="title-ios-sub">Cierre de Turno y Caja</h3>
+        <p style="color: #8e8e93; font-size: 14px; margin-bottom: 15px;">Confirme el nombre del operador para mandar a impresión el Reporte</p>
+        <div class="input-field">
+            <label style="color:#fff;">Nombre del Trabajador</label>
+            <input type="text" id="repTrabajador" placeholder="Nombre" style="background:#fff; color:#000; text-transform: uppercase;">
+        </div>
+        <div class="button-row" style="margin-top:20px;">
+            <button class="ios-btn-danger" style="background:#555; margin:0;" onclick="cerrarModalReporte()">Cancelar</button>
+            <button class="ios-btn" style="flex:1; border-radius:10px; background:#0265f0;" onclick="ejecutarReporteImpreso()">Imprimir Reporte</button>
         </div>
     </div>
 

@@ -274,7 +274,7 @@ function imprimirTicketSalida(h){
 }
 
 // ==========================================================================
-// CONTROL DEL REPORTE GENERAL CON COMPARTIR INTEGRADO NATIVO
+// REPORTE GENERAL CON GUARDADO POR TRANSFERENCIA DIRECTA BASE64
 // ==========================================================================
 function generarReporteHTML() { abrirModalReporte(); }
 
@@ -373,7 +373,6 @@ function procesarReporteAccion(modo) {
             html2canvas(targetDOM, {scale: 2, logging: false, useCORS: true}).then(canvas => {
                 let base64data = canvas.toDataURL("image/png");
                 
-                // Generar vista previa visual de la imagen en el modal
                 let imgElement = document.createElement("img");
                 imgElement.src = base64data;
                 imgElement.style.maxWidth = "100%";
@@ -383,28 +382,24 @@ function procesarReporteAccion(modo) {
                 contenedor.innerHTML = ""; 
                 contenedor.appendChild(imgElement);
                 
-                // Reconfigurar dinámicamente la acción del botón Verde para usar la API Nativa de Compartir
-                let btnCompartir = document.getElementById("btnCompartirNativo");
-                btnCompartir.onclick = async () => {
+                // MÉTODO COMPATIBLE ANDROID WEBVIEW: Forzar la apertura del flujo de datos binario puro
+                let btnDescarga = document.getElementById("btnDescargaInyectada");
+                btnDescarga.onclick = () => {
                     try {
-                        // Convertir Base64 en un archivo binario temporal seguro para el OS
-                        const res = await fetch(base64data);
-                        const blob = await res.blob();
-                        const file = new File([blob], `Reporte_${trabajador.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
-                        
-                        // Llamar al menú nativo compartiendo el archivo de imagen
-                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            await navigator.share({
-                                files: [file],
-                                title: 'Reporte de Turno',
-                                text: `Cierre de caja Torre Granados - Responsable: ${trabajador}`
-                            });
+                        let win = window.open();
+                        if (win) {
+                            win.document.write(`<iframe src="${base64data}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
                         } else {
-                            alert("Esta función requiere Android actualizado o compatibilidad WebShare.");
+                            // Alternativa si los popups están bloqueados: simular descarga directa inyectando cabecera octet-stream
+                            let alternateLink = document.createElement("a");
+                            alternateLink.href = base64data.replace("image/png", "image/octet-stream");
+                            alternateLink.download = `Reporte_${trabajador.replace(/\s+/g, '_')}.png`;
+                            document.body.appendChild(alternateLink);
+                            alternateLink.click();
+                            document.body.removeChild(alternateLink);
                         }
-                    } catch (e) {
-                        console.log("Error al compartir: ", e);
-                        alert("No se pudo ejecutar la acción de exportación: " + e.message);
+                    } catch(err) {
+                        alert("Error al procesar almacenamiento: " + err.message);
                     }
                 };
 

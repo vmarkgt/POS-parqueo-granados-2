@@ -106,14 +106,16 @@
 
     <div id="modalReporte" class="card center-content" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 400px; border: 1px solid #333; background: rgba(20, 20, 20, 0.95);">
         <h3 class="title-ios-sub">Cierre de Turno y Caja</h3>
-        <p style="color: #8e8e93; font-size: 14px; margin-bottom: 15px;">Confirme el nombre del operador para mandar a impresión el Reporte</p>
-        <div class="input-field">
+        <p style="color: #8e8e93; font-size: 14px; margin-bottom: 15px;">Escriba su nombre y seleccione cómo desea exportar sus movimientos del turno:</p>
+        <div class="input-field" style="margin-bottom: 10px;">
             <label style="color:#fff;">Nombre del Trabajador</label>
-            <input type="text" id="repTrabajador" placeholder="Nombre" style="background:#fff; color:#000; text-transform: uppercase;">
+            <input type="text" id="repTrabajador" placeholder="Escriba su nombre completo" style="background:#fff; color:#000; text-transform: uppercase;">
         </div>
-        <div class="button-row" style="margin-top:20px;">
-            <button class="ios-btn-danger" style="background:#555; margin:0;" onclick="cerrarModalReporte()">Cancelar</button>
-            <button class="ios-btn" style="flex:1; border-radius:10px; background:#0265f0;" onclick="ejecutarReporteImpreso()">Imprimir Reporte</button>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 15px;">
+            <button class="ios-btn" style="background: #34c759; border-radius: 10px; margin: 0; padding: 12px;" onclick="procesarReporteAccion('IMPRIMIR')">🖨️ Imprimir Ticket Físico</button>
+            <button class="ios-btn" style="background: #007aff; border-radius: 10px; margin: 0; padding: 12px;" onclick="procesarReporteAccion('DESCARGAR')">🖼️ Descargar Imagen (PNG)</button>
+            <button class="ios-btn-danger" style="background: #555; border-radius: 10px; margin: 5px 0 0 0; padding: 10px;" onclick="cerrarModalReporte()">Cancelar</button>
         </div>
     </div>
 

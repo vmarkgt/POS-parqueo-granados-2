@@ -209,21 +209,35 @@ function borrarHistorialTotal(){
 
 function procesarEImprimirNativo(contenedor) {
     document.body.appendChild(contenedor);
+    
+    // Le damos un pequeño delay para asegurar la lectura del DOM
     setTimeout(() => {
+        if (typeof html2canvas === "undefined") {
+            alert("Error: html2canvas no está cargado en el HTML. Verifica el script.");
+            contenedor.remove();
+            return;
+        }
+
         html2canvas(contenedor, {
             scale: 2,
             backgroundColor: "#ffffff",
+            logging: false,
             useCORS: true
         }).then(canvas => {
             const base64Data = canvas.toDataURL("image/png").split(',')[1];
-            if (window.AndroidPrinter) {
+            
+            if (window.AndroidPrinter && window.AndroidPrinter.imprimirImagenBase64) {
                 window.AndroidPrinter.imprimirImagenBase64(base64Data);
             } else {
+                // Si falla o estás probando fuera de la APK abre impresión nativa normal
                 window.print();
             }
             contenedor.remove();
+        }).catch(err => {
+            alert("Error al procesar el ticket con html2canvas: " + err.message);
+            contenedor.remove();
         });
-    }, 200);
+    }, 250);
 }
 
 function imprimirTicketEntrada(v){
@@ -231,22 +245,24 @@ function imprimirTicketEntrada(v){
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
     contenedor.style.width = "280px";
-    contenedor.style.padding = "10px";
+    contenedor.style.padding = "15px";
+    contenedor.style.background = "#ffffff";
     contenedor.style.color = "#000000";
+    contenedor.style.fontFamily = "Arial, sans-serif";
     
     contenedor.innerHTML = `
         <center>
-            <img src="logotorre.png" width="90" style="display: block; margin: 0 auto 5px auto;">
-            <p style="font-size: 14px; font-weight: bold; margin: 2px 0;">TORRE GRANADOS</p>
-            <hr style="border-top: 1px dashed #000;">
-            <h1 style="font-size: 32px; margin: 10px 0; text-align: center;">${v.placa}</h1>
-            <hr style="border-top: 1px dashed #000;">
+            <h2 style="font-size: 16px; font-weight: bold; margin: 2px 0; text-transform: uppercase;">TORRE GRANADOS</h2>
+            <p style="font-size: 11px; margin: 2px 0;">CONTROL DE PARQUEO</p>
+            <hr style="border-top: 1px dashed #000; margin: 8px 0;">
+            <h1 style="font-size: 38px; margin: 12px 0; font-weight: bold; text-align: center;">${v.placa}</h1>
+            <hr style="border-top: 1px dashed #000; margin: 8px 0;">
         </center>
-        <p style="font-size: 12px; margin: 4px 0;"><b>ENTRADA:</b> ${fechaHora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-        <p style="font-size: 12px; margin: 4px 0;"><b>FECHA:</b> ${fechaHora.toLocaleDateString()}</p>
-        <hr style="border-top: 1px dashed #000;">
+        <p style="font-size: 13px; margin: 5px 0;"><b>ENTRADA:</b> ${fechaHora.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+        <p style="font-size: 13px; margin: 5px 0;"><b>FECHA:</b> ${fechaHora.toLocaleDateString()}</p>
+        <hr style="border-top: 1px dashed #000; margin: 8px 0;">
         <center>
-            <p style="font-weight: bold; font-size: 11px; margin: 5px 0;">30 MIN GRATIS POR SELLO</p>
+            <p style="font-weight: bold; font-size: 12px; margin: 5px 0;">30 MIN GRATIS POR SELLO</p>
         </center>
     `;
     
@@ -258,22 +274,24 @@ function imprimirTicketSalida(h){
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
     contenedor.style.width = "280px";
-    contenedor.style.padding = "10px";
+    contenedor.style.padding = "15px";
+    contenedor.style.background = "#ffffff";
     contenedor.style.color = "#000000";
+    contenedor.style.fontFamily = "Arial, sans-serif";
     
     contenedor.innerHTML = `
         <center>
-            <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
-            <hr style="border-top: 1px dashed #000;">
-            <p style="font-size: 15px; font-weight: bold; margin: 5px 0; text-align: center;">PLACA: ${h.placa}</p>
-            <h1 style="font-size: 36px; margin: 5px 0; text-align: center;">${visualPrecio}</h1>
-            <hr style="border-top: 1px dashed #000;">
+            <h2 style="font-size: 16px; font-weight: bold; margin: 2px 0; text-transform: uppercase;">TORRE GRANADOS</h2>
+            <hr style="border-top: 1px dashed #000; margin: 8px 0;">
+            <p style="font-size: 16px; font-weight: bold; margin: 5px 0; text-align: center;">PLACA: ${h.placa}</p>
+            <h1 style="font-size: 42px; margin: 10px 0; font-weight: bold; text-align: center;">${visualPrecio}</h1>
+            <hr style="border-top: 1px dashed #000; margin: 8px 0;">
         </center>
-        <p style="font-size: 12px; margin: 4px 0;"><b>E:</b> ${h.horaE} | <b>S:</b> ${h.horaS}</p>
-        <p style="font-size: 12px; margin: 4px 0;"><b>FECHA:</b> ${h.fecha}</p>
-        <hr style="border-top: 1px dashed #000;">
+        <p style="font-size: 13px; margin: 5px 0;"><b>E:</b> ${h.horaE} | <b>S:</b> ${h.horaS}</p>
+        <p style="font-size: 13px; margin: 5px 0;"><b>FECHA:</b> ${h.fecha}</p>
+        <hr style="border-top: 1px dashed #000; margin: 8px 0;">
         <center>
-            <p style="font-weight: bold; font-size: 11px; margin: 5px 0; text-align: center;">¡GRACIAS POR SU VISITA!</p>
+            <p style="font-weight: bold; font-size: 12px; margin: 5px 0; text-align: center;">¡GRACIAS POR SU VISITA!</p>
         </center>
     `;
     
@@ -284,24 +302,25 @@ function imprimirTicketServicioExtra(reg, totalTexto){
     const contenedor = document.createElement('div');
     contenedor.className = 'ticket-print';
     contenedor.style.width = "280px";
-    contenedor.style.padding = "10px";
+    contenedor.style.padding = "15px";
+    contenedor.style.background = "#ffffff";
     contenedor.style.color = "#000000";
+    contenedor.style.fontFamily = "Arial, sans-serif";
     
     contenedor.innerHTML = `
         <center>
-            <img src="logotorre.png" width="80" style="display: block; margin: 0 auto 5px auto;">
-            <p style="font-size: 14px; font-weight: bold; text-align: center; margin: 2px 0;">TORRE GRANADOS</p>
-            <hr style="border-top: 1px dashed #000;">
-            <p style="font-size: 14px; font-weight: bold; text-align: center; margin: 5px 0;">${reg.tipo}</p>
-            <h1 style="font-size: 32px; margin: 5px 0; text-align: center;">${totalTexto}</h1>
-            <hr style="border-top: 1px dashed #000;">
+            <h2 style="font-size: 16px; font-weight: bold; margin: 2px 0; text-transform: uppercase;">TORRE GRANADOS</h2>
+            <hr style="border-top: 1px dashed #000; margin: 8px 0;">
+            <p style="font-size: 15px; font-weight: bold; text-align: center; margin: 5px 0;">${reg.tipo}</p>
+            <h1 style="font-size: 36px; margin: 10px 0; font-weight: bold; text-align: center;">${totalTexto}</h1>
+            <hr style="border-top: 1px dashed #000; margin: 8px 0;">
         </center>
-        <p style="font-size: 12px; margin: 4px 0;"><b>DETALLE:</b> ${reg.placa}</p>
-        <p style="font-size: 12px; margin: 4px 0;"><b>FECHA:</b> ${reg.fecha}</p>
-        <p style="font-size: 12px; margin: 4px 0;"><b>OPERADOR:</b> ${reg.operador.toUpperCase()}</p>
-        <hr style="border-top: 1px dashed #000;">
+        <p style="font-size: 13px; margin: 5px 0;"><b>DETALLE:</b> ${reg.placa}</p>
+        <p style="font-size: 13px; margin: 5px 0;"><b>FECHA:</b> ${reg.fecha}</p>
+        <p style="font-size: 13px; margin: 5px 0;"><b>OPERADOR:</b> ${reg.operador.toUpperCase()}</p>
+        <hr style="border-top: 1px dashed #000; margin: 8px 0;">
         <center>
-            <p style="font-weight: bold; font-size: 11px; text-align: center; margin: 5px 0;">COMPROBANTE DE PAGO</p>
+            <p style="font-weight: bold; font-size: 12px; text-align: center; margin: 5px 0;">COMPROBANTE DE PAGO</p>
         </center>
     `;
     
@@ -325,7 +344,7 @@ function generarReporteHTML() {
 
     reportContainer.innerHTML = `
         <div style="border: 1px solid #000; padding: 30px; min-height: 800px; font-family: Arial;">
-            <center><img src="logotorre.png" width="180"><h1>REPORTE DE TURNO</h1></center>
+            <center><h1>REPORTE DE TURNO</h1></center>
             <div style="display:flex; justify-content:space-between; margin-top:30px;">
                 <span><b>OPERADOR:</b> ${trabajador.toUpperCase()}</span>
                 <span><b>FECHA:</b> ${new Date().toLocaleDateString()}</span>

@@ -274,7 +274,7 @@ function imprimirTicketSalida(h){
 }
 
 // ==========================================================================
-// GENERADOR DE REPORTE CON RENDER 100% IMAGEN COMPATIBLE CON ANDROID (LONG-PRESS)
+// GENERADOR DE REPORTE CON FORZADO EN VENTANA FLOTANTE DE ANDROID
 // ==========================================================================
 function generarReporteHTML() { abrirModalReporte(); }
 
@@ -371,10 +371,8 @@ function procesarReporteAccion(modo) {
 
         setTimeout(() => {
             html2canvas(targetDOM, {scale: 2, logging: false, useCORS: true}).then(canvas => {
-                // AQUÍ ESTÁ EL TRUCO: Convertimos el canvas a formato Base64 nativo de imagen
                 let base64data = canvas.toDataURL("image/png");
                 
-                // Creamos una etiqueta HTML <img> nativa pura
                 let imgElement = document.createElement("img");
                 imgElement.src = base64data;
                 imgElement.alt = "Reporte de Turno";
@@ -382,12 +380,42 @@ function procesarReporteAccion(modo) {
                 imgElement.style.height = "auto";
                 imgElement.style.display = "block";
                 
-                // Inyectamos el elemento en el modal visual
                 let contenedor = document.getElementById("contenedorRenderImagen");
                 contenedor.innerHTML = ""; 
                 contenedor.appendChild(imgElement);
                 
-                // Desplegamos el visor limpio
+                // ESTRATEGIA DE EVASIÓN WEBVIEW:
+                // Genera un documento HTML limpio sobre la marcha en una ventana en blanco.
+                // Esto rompe las capas CSS y el bloqueo táctil interno del WebView.
+                let btnAbrirNativo = document.getElementById("btnAbrirVentanaNativa");
+                btnAbrirNativo.onclick = () => {
+                    let nuevaVentana = window.open();
+                    if(nuevaVentana) {
+                        nuevaVentana.document.write(`
+                            <html>
+                            <head>
+                                <title>Reporte - Manten presionado</title>
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <style>
+                                    body { background: #000; margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; color: #fff; }
+                                    img { max-width: 95%; height: auto; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); background: #fff; padding: 5px; }
+                                    p { font-size: 14px; text-align: center; margin-bottom: 15px; color: #ccc; padding: 0 20px;}
+                                </style>
+                            </head>
+                            <body>
+                                <p>⚠️ <b>PANTALLA COMPLETA NATIVA:</b><br>Mantén presionado sobre el reporte para guardar o compartir.</p>
+                                <img src="${base64data}">
+                            </body>
+                            </html>
+                        `);
+                        nuevaVentana.document.close();
+                    } else {
+                        // Respaldo secundario si la app bloquea los popups drásticamente:
+                        // Redirecciona la pestaña actual directamente al archivo Base64.
+                        window.location.href = base64data;
+                    }
+                };
+
                 cerrarModalReporte();
                 document.getElementById("modalVerImagen").style.display = "block";
                 document.body.removeChild(targetDOM);

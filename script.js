@@ -125,7 +125,7 @@ function cobrarBaño() {
     let registro = {
         placa: "USO DE BAÑO", 
         tipo: "BAÑO", 
-        precio: 3, 
+        precio: 5, 
         fecha: new Date().toLocaleDateString(), 
         operador: obtenerOperadorActual(), 
         valorSello: 0
@@ -136,7 +136,7 @@ function cobrarBaño() {
     const btnBaño = document.querySelector("button[onclick='cobrarBaño()']");
     if(btnBaño) {
         const textoOriginal = btnBaño.innerHTML;
-        btnBaño.innerHTML = "✅ ¡REGISTRADO Q3!";
+        btnBaño.innerHTML = "✅ ¡REGISTRADO Q5!";
         btnBaño.style.background = "#34c759";
         btnBaño.style.color = "#fff";
         setTimeout(() => {
@@ -145,7 +145,7 @@ function cobrarBaño() {
             btnBaño.style.color = "";
         }, 2000);
     }
-    alert("Uso de baño registrado (Q3)");
+    alert("Uso de baño registrado (Q5)");
 }
 
 function guardarMensualidad() {
@@ -385,8 +385,6 @@ function procesarReporteAccion(modo) {
                 contenedor.appendChild(imgElement);
                 
                 // ESTRATEGIA DE EVASIÓN WEBVIEW:
-                // Genera un documento HTML limpio sobre la marcha en una ventana en blanco.
-                // Esto rompe las capas CSS y el bloqueo táctil interno del WebView.
                 let btnAbrirNativo = document.getElementById("btnAbrirVentanaNativa");
                 btnAbrirNativo.onclick = () => {
                     let nuevaVentana = window.open();
@@ -410,8 +408,6 @@ function procesarReporteAccion(modo) {
                         `);
                         nuevaVentana.document.close();
                     } else {
-                        // Respaldo secundario si la app bloquea los popups drásticamente:
-                        // Redirecciona la pestaña actual directamente al archivo Base64.
                         window.location.href = base64data;
                     }
                 };
